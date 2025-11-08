@@ -1,6 +1,6 @@
 # app_ai.py — SAME UI/look; serial-first + OEM lookup + LLM spec guess (best-effort)
-# Adds: /upload-db (GET+POST) to build data/models_db.json from Excel/CSV,
-# and a safe DB fallback for CPU/RAM that does not interfere with OEM results.
+# Adds: Lenovo/HP OEM lookups via env-based endpoints; serial can be longer than 7 (Dell retained).
+# Keeps your /upload-db page + local DB fallback.
 
 import os, re, io, json, time, base64, traceback, shutil
 from datetime import datetime
@@ -21,12 +21,20 @@ except Exception:
 # ===== ENV =====
 API_BASE  = os.getenv("VISION_API_BASE", "https://api.openai.com/v1").rstrip("/")
 API_KEY   = os.getenv("VISION_API_KEY", "")
-MODEL     = os.getenv("VISION_MODEL", "gpt-4o-mini")  # same model for vision & tiny text task
+MODEL     = os.getenv("VISION_MODEL", "gpt-4o-mini")
 OPENAI_PROJECT = os.getenv("OPENAI_PROJECT", "")
 
-# Enable/disable serial → OEM lookup (best effort). Keep off if you don't want outbound hits.
-ALLOW_LOOKUPS = os.getenv("ALLOW_LOOKUPS", "1") in ("1", "true", "True", "yes", "YES")
+# OEM lookup toggles/params
+ALLOW_LOOKUPS  = os.getenv("ALLOW_LOOKUPS", "1") in ("1","true","True","yes","YES")
 LOOKUP_TIMEOUT = float(os.getenv("LOOKUP_TIMEOUT", "8.0"))
+
+# Lenovo (set these if you have access)
+LENOVO_API_URL = os.getenv("LENOVO_API_URL", "").strip()  # e.g. "https://your-lenovo-endpoint.example.com/lookup?sn={serial}"
+LENOVO_API_KEY = os.getenv("LENOVO_API_KEY", "").strip()
+
+# HP (set these if you have access)
+HP_API_URL = os.getenv("HP_API_URL", "").strip()  # e.g. "https://your-hp-endpoint.example.com/lookup?serial={serial}"
+HP_API_KEY = os.getenv("HP_API_KEY", "").strip()
 
 DATA_CSV = "scans.csv"
 UPLOADS  = "uploads"
@@ -40,7 +48,6 @@ REG_MODEL_TO_RETAIL = {"P131G": "Latitude 7410"}
 
 # Known model spec hints (very small, safe defaults; used only if nothing else found)
 SPEC_HINTS = {
-    # Laptops
     "Latitude 7410": {
         "cpu": "Intel Core i5-10210U / i7-10610U (10th Gen, vPro optional)",
         "ram": "8 GB default, up to 32 GB DDR4-2666"
@@ -49,7 +56,6 @@ SPEC_HINTS = {
         "cpu": "Intel Core i5-10210U / i7-10610U (10th Gen, vPro optional)",
         "ram": "8 GB default, up to 32 GB DDR4-2666"
     },
-    # Desktops (ambiguous generations are labeled as 'varies by config')
     "OptiPlex 7010": {
         "cpu": "Varies by config (Ivy Bridge i5-3xxx in 2012 gen; newer '7010 Micro' uses 12th Gen)",
         "ram": "4–16 GB typical; check config"
@@ -230,13 +236,12 @@ def refine_model_with_family(model_no: str, raw_text: str) -> str:
     if brand.lower() in model_no.lower(): return model_no
     return cand
 
-# ---------- Tiny helper: LLM text inference for CPU/RAM (best-effort) ----------
+# ---------- Tiny helper: LLM text inference for CPU/RAM ----------
 def ai_guess_specs(model_str: str) -> dict:
     model_str = (model_str or "").strip()
     if not API_KEY or not model_str:
         return {}
 
-    # If we have a local hint, prefer it
     for key, v in SPEC_HINTS.items():
         if key.lower() in model_str.lower():
             return {"cpu": v.get("cpu",""), "ram": v.get("ram","")}
@@ -349,21 +354,16 @@ def call_openai_label_extract(img_path):
                 time.sleep(2 ** attempt); continue
             raise
 
-# ---------- OEM lookup helpers (unchanged) ----------
+# ---------- OEM lookup helpers ----------
 def _is_dell_service_tag(tag: str) -> bool:
     return bool(re.fullmatch(r"[A-Z0-9]{7}", (tag or "").strip().upper()))
 
 def _lookup_dell_by_tag(tag: str):
-    """
-    Try public Dell support endpoints (no key). These may rate-limit/deny; we handle failures gracefully.
-    Returns dict: {"manufacturer","model_no","cpu","ram"} or {} if not found.
-    """
     out = {}
     tag = (tag or "").strip().upper()
     if not _is_dell_service_tag(tag):
         return out
     import requests
-
     endpoints = [
         f"https://www.dell.com/support/api/asset-en-us/assets/getassetssummary?servicetags={tag}",
         f"https://www.dell.com/support/api/asset-en-us/assetinfo/v1/GetAssetHeader?servicetag={tag}",
@@ -375,7 +375,6 @@ def _lookup_dell_by_tag(tag: str):
                 continue
             data = r.json()
             if isinstance(data, dict):
-                # Shape 1: asset summaries list
                 summaries = data.get("assetSummaries") or data.get("AssetSummaries")
                 if isinstance(summaries, list) and summaries:
                     s0 = summaries[0]
@@ -383,13 +382,11 @@ def _lookup_dell_by_tag(tag: str):
                     if model:
                         out["manufacturer"] = "DELL"
                         out["model_no"] = str(model).strip()
-                        # Some rare responses may include these:
                         cpu = s0.get("cpu") or s0.get("cpuDescription") or ""
                         ram = s0.get("memory") or s0.get("ram") or ""
                         if cpu: out["cpu"] = str(cpu).strip()
                         if ram: out["ram"] = str(ram).strip()
                         return out
-                # Shape 2: header object
                 hdr = data.get("AssetHeaderData") or data.get("assetHeaderData")
                 if isinstance(hdr, dict):
                     model = hdr.get("MachineDescription") or hdr.get("SystemModel") or ""
@@ -402,29 +399,100 @@ def _lookup_dell_by_tag(tag: str):
     return out
 
 def _lookup_lenovo_by_serial(sn: str):
-    # Placeholder hook; Lenovo typically needs API/PSREF mapping. Return {} for now.
-    return {}
+    """
+    Best-effort Lenovo lookup via env-configured endpoint.
+    Provide LENOVO_API_URL with {serial} placeholder and (optionally) LENOVO_API_KEY.
+    Return dict keys we can use: manufacturer, model_no, cpu, ram (any subset).
+    """
+    out = {}
+    sn = (sn or "").strip()
+    if not LENOVO_API_URL:
+        return out
+    url = LENOVO_API_URL.replace("{serial}", sn)
+    import requests
+    try:
+        headers = {"Accept": "application/json"}
+        if LENOVO_API_KEY:
+            headers["Authorization"] = f"Bearer {LENOVO_API_KEY}"
+        r = requests.get(url, timeout=LOOKUP_TIMEOUT, headers=headers)
+        if r.status_code != 200:
+            return out
+        data = r.json()
+        # Try to pull reasonable fields defensively
+        # Common shapes you might see:
+        #  - {"productName": "...", "MTMName":"...", "MachineTypeModel":"...", "Product":"ThinkPad T480", "cpu":"...", "ram":"..."}
+        cand_model = (
+            data.get("productName") or data.get("Product") or
+            data.get("MTMName") or data.get("MachineTypeModel") or ""
+        )
+        if cand_model:
+            out["manufacturer"] = "LENOVO"
+            out["model_no"] = str(cand_model).strip()
+        # Optional CPU/RAM if present
+        for k in ("cpu","CPU","processor","Processor"):
+            if data.get(k):
+                out["cpu"] = str(data.get(k)).strip(); break
+        for k in ("ram","RAM","memory","Memory"):
+            if data.get(k):
+                out["ram"] = str(data.get(k)).strip(); break
+        return out
+    except Exception:
+        return {}
 
 def _lookup_hp_by_serial(sn: str):
-    # Placeholder hook; HP warranty/specs APIs generally require keys. Return {} for now.
-    return {}
+    """
+    Best-effort HP lookup via env-configured endpoint.
+    Provide HP_API_URL with {serial} placeholder and (optionally) HP_API_KEY.
+    Return dict keys we can use: manufacturer, model_no, cpu, ram (any subset).
+    """
+    out = {}
+    sn = (sn or "").strip()
+    if not HP_API_URL:
+        return out
+    url = HP_API_URL.replace("{serial}", sn)
+    import requests
+    try:
+        headers = {"Accept": "application/json"}
+        if HP_API_KEY:
+            headers["Authorization"] = f"Bearer {HP_API_KEY}"
+        r = requests.get(url, timeout=LOOKUP_TIMEOUT, headers=headers)
+        if r.status_code != 200:
+            return out
+        data = r.json()
+        # Try to pull reasonable fields defensively.
+        cand_model = (
+            data.get("productName") or data.get("Model") or data.get("modelName") or data.get("Product") or ""
+        )
+        if cand_model:
+            out["manufacturer"] = "HP"
+            out["model_no"] = str(cand_model).strip()
+        for k in ("cpu","CPU","processor","Processor"):
+            if data.get(k):
+                out["cpu"] = str(data.get(k)).strip(); break
+        for k in ("ram","RAM","memory","Memory"):
+            if data.get(k):
+                out["ram"] = str(data.get(k)).strip(); break
+        return out
+    except Exception:
+        return {}
 
 def oem_lookup(serial: str) -> dict:
     """Dispatch to vendor-specific lookups. Best-effort & safe to fail."""
-    sn = (serial or "").strip().upper()
+    sn = (serial or "").strip()
     if not sn:
         return {}
-    # Dell first
+
+    # Dell first when it's a clean 7-char ST
     if _is_dell_service_tag(sn):
         got = _lookup_dell_by_tag(sn)
         if got:
-            # If CPU/RAM missing but we got a model, ask LLM for a concise guess
             if (not got.get("cpu") or not got.get("ram")) and got.get("model_no"):
                 guessed = ai_guess_specs(got.get("model_no",""))
                 if guessed.get("cpu"): got["cpu"] = guessed["cpu"]
                 if guessed.get("ram"): got["ram"] = guessed["ram"]
             return got
-    # Other vendors (future)
+
+    # Lenovo → HP (order arbitrary; both are best-effort based on env config)
     for f in (_lookup_lenovo_by_serial, _lookup_hp_by_serial):
         try:
             got = f(sn)
@@ -436,9 +504,10 @@ def oem_lookup(serial: str) -> dict:
                 return got
         except Exception:
             pass
+
     return {}
 
-# ---------- Local DB: load + lookup (ADDED, safe no-interfere) ----------
+# ---------- Local DB: load + lookup (unchanged) ----------
 def _load_models_db():
     try:
         if os.path.exists(MODELS_DB_PATH):
@@ -454,12 +523,6 @@ def _norm(s):
     return re.sub(r"\s+", " ", (s or "").strip()).lower()
 
 def db_lookup_specs(manufacturer: str, model_name: str) -> dict:
-    """
-    Return {"cpu": "...", "ram": "..."} if a record matches.
-    Match rules:
-      - exact on (manufacturer, model_no) normalized
-      - OR alt_names contains a name that matches model_name
-    """
     manufacturer = _norm(manufacturer)
     model_name_n = _norm(model_name)
     if not model_name_n:
@@ -492,12 +555,11 @@ def db_lookup_specs(manufacturer: str, model_name: str) -> dict:
                 break
     return best
 
-# ---------- Fuse two pics (unchanged logic, with family fix) ----------
+# ---------- Fuse two pics (unchanged) ----------
 def fuse_pair(a: dict, b: dict) -> dict:
     out = {k: (a.get(k) or b.get(k) or "") for k in SCHEMA.keys()}
     combined_raw = " | ".join(filter(None, [a.get("raw_text",""), b.get("raw_text","")]))[:6000]
 
-    # Service Tag preference when brand is Dell
     st = SERVICE_TAG_PAT.search(combined_raw)
     service_tag = st.group(1).upper() if st else ""
 
@@ -507,10 +569,8 @@ def fuse_pair(a: dict, b: dict) -> dict:
         elif out.get("serial") and not re.fullmatch(r"[A-Z0-9]{7}", out["serial"]):
             out["serial"] = ""
 
-    # Family model refinement (e.g., "OptiPlex 7010")
     out["model_no"] = refine_model_with_family(out.get("model_no",""), combined_raw)
 
-    # Retail guess via reg model
     if not out.get("retail_model_guess") and (out.get("manufacturer","").lower() == "dell"):
         rm = (out.get("reg_model") or "").upper()
         if rm in REG_MODEL_TO_RETAIL:
@@ -591,9 +651,9 @@ def analyze_pair():
       1) Run vision on both images (unchanged).
       2) Fuse results (unchanged family fix).
       3) If manual_serial provided, override serial with it.
-      4) If ALLOW_LOOKUPS and we have a serial, try OEM lookup for model/cpu/ram.
+      4) If ALLOW_LOOKUPS and we have a serial, try OEM lookup (Dell → Lenovo → HP).
       5) If cpu/ram still blank but we have a marketing model, try local DB fallback.
-      6) If still blank, ask tiny LLM text call for typical CPU/RAM (best-effort).
+      6) If still blank, ask tiny LLM for typical CPU/RAM (best-effort).
       7) Return fused+enhanced JSON (saved on Confirm).
     """
     fA = request.files.get("fileA")
@@ -623,11 +683,9 @@ def analyze_pair():
         print("ANALYZE ERROR:", repr(e)); print(traceback.format_exc())
         return jsonify({"error":"vision_llm_failed","detail":str(e)}), 400
 
-    # ---- Serial-first override ----
     if manual_serial:
         fused["serial"] = manual_serial
 
-    # ---- OEM lookup (best-effort) ----
     looked = {}
     if ALLOW_LOOKUPS and fused.get("serial"):
         try:
@@ -635,14 +693,12 @@ def analyze_pair():
         except Exception as e:
             print("OEM LOOKUP ERROR:", repr(e))
 
-    # Merge OEM info (prefer OEM where present)
     if looked:
         if looked.get("manufacturer"): fused["manufacturer"] = looked["manufacturer"]
         if looked.get("model_no"):     fused["model_no"]     = looked["model_no"]
         if looked.get("cpu"):          fused["cpu"]          = looked["cpu"]
         if looked.get("ram"):          fused["ram"]          = looked["ram"]
 
-    # If CPU/RAM still blank but we have a model, try local DB fallback (safe, no-interfere)
     if (not fused.get("cpu") or not fused.get("ram")):
         model_for_db = fused.get("model_no") or fused.get("retail_model_guess")
         if model_for_db:
@@ -650,13 +706,11 @@ def analyze_pair():
             if not fused.get("cpu") and dbhit.get("cpu"): fused["cpu"] = dbhit["cpu"]
             if not fused.get("ram") and dbhit.get("ram"): fused["ram"] = dbhit["ram"]
 
-    # If still blank but we have a model, ask LLM for concise typical specs (best-effort)
     if (not fused.get("cpu") or not fused.get("ram")) and fused.get("model_no"):
         guessed = ai_guess_specs(fused["model_no"])
         if not fused.get("cpu") and guessed.get("cpu"): fused["cpu"] = guessed["cpu"]
         if not fused.get("ram") and guessed.get("ram"): fused["ram"] = guessed["ram"]
 
-    # Final family-name fix (keeps marketing names like “OptiPlex 7010”)
     fused["model_no"] = refine_model_with_family(fused.get("model_no",""), fused.get("raw_text",""))
 
     out = {
@@ -690,7 +744,7 @@ def confirm_row():
     )
     return jsonify({"ok": True, "saved": flat.get("time","")})
 
-# ====== Upload DB page (GET) — with safe inline fallback ======
+# ====== Upload DB page (inline fallback preserved) ======
 INLINE_UPLOAD_DB_HTML = """<!doctype html>
 <html><head><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Upload Model Database (Fallback)</title>
@@ -744,20 +798,8 @@ def upload_db_page():
     except TemplateNotFound:
         return INLINE_UPLOAD_DB_HTML
 
-# ====== Upload DB builder (POST) — Excel/CSV → data/models_db.json ======
 @app.route("/upload-db", methods=["POST"])
 def upload_db_post():
-    """
-    Accept .xlsx or .csv.
-    Expected columns (case-insensitive ok, aliases handled):
-      - manufacturer
-      - model / model_no
-      - cpu
-      - ram
-      - alt_names (optional; comma-separated)
-    Dedup key: (manufacturer, model_no) normalized.
-    Saves to data/models_db.json, with a timestamped .bak JSON if the file already exists.
-    """
     f = request.files.get("file")
     if not f:
         return jsonify({"error": "no_file"}), 400
@@ -767,13 +809,11 @@ def upload_db_post():
         return jsonify({"error": "unsupported_file_type"}), 400
 
     try:
-        # Load into dataframe
         if name.endswith(".xlsx"):
             df = pd.read_excel(f, engine="openpyxl")
         else:
             df = pd.read_csv(f, dtype=str)
 
-        # Normalize columns (map aliases)
         df.columns = [c.strip().lower() for c in df.columns]
         alias = {
             "model":"model_no",
@@ -786,18 +826,15 @@ def upload_db_post():
             cols.append(alias.get(c, c))
         df.columns = cols
 
-        # Required-ish columns
         if "manufacturer" not in df.columns:
             return jsonify({"error":"missing_column", "detail":"manufacturer"}), 400
         if "model_no" not in df.columns:
             return jsonify({"error":"missing_column", "detail":"model/model_no"}), 400
 
-        # Optional columns
         for c in ["cpu","ram","alt_names"]:
             if c not in df.columns:
                 df[c] = ""
 
-        # Build clean list
         out = []
         seen = set()
         for _, row in df.iterrows():
@@ -828,14 +865,12 @@ def upload_db_post():
                 "alt_names": alt_list
             })
 
-        # Backup existing DB (if present)
         backup_path = ""
         if os.path.exists(MODELS_DB_PATH):
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = MODELS_DB_PATH.replace(".json", f".{ts}.bak.json")
             shutil.copy2(MODELS_DB_PATH, backup_path)
 
-        # Save new DB
         with open(MODELS_DB_PATH, "w", encoding="utf-8") as f2:
             json.dump(out, f2, ensure_ascii=False, indent=2)
 
@@ -845,7 +880,6 @@ def upload_db_post():
         print(traceback.format_exc())
         return jsonify({"error":"build_failed", "detail": str(e)}), 400
 
-# Tiny helper to debug paths
 @app.route("/whereami")
 def whereami():
     return jsonify({
@@ -859,4 +893,5 @@ def whereami():
 if __name__ == "__main__":
     print(f"ALLOW_LOOKUPS={ALLOW_LOOKUPS}  LOOKUP_TIMEOUT={LOOKUP_TIMEOUT}s")
     print(f"MODELS_DB_PATH={MODELS_DB_PATH}")
+    print(f"LENOVO_API_URL set? {bool(LENOVO_API_URL)}  HP_API_URL set? {bool(HP_API_URL)}")
     app.run(host="0.0.0.0", port=5000, debug=True)
