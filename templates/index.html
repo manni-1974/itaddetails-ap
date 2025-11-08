@@ -21,7 +21,7 @@
   button.primary{background:#2356ff;border-color:#2356ff;color:#fff}
   button:disabled{opacity:.6;cursor:not-allowed}
   table{width:100%;border-collapse:collapse;margin-top:14px;background:#0f1522}
-  th,td{border:1px solid #1b2740;padding:8px 10px;text-align:left;font-size:14px}
+  th,td{border:1px solid #1b2740;padding:8px 10px;text-align:left;font-size:14px;vertical-align:middle}
   th{background:#10192d}
   .hint{font-size:12px;color:#9fb0c7;margin-top:6px}
   .ok{color:#22c55e}
@@ -47,6 +47,21 @@
   }
   .linkbtn{padding:10px 14px;border-radius:8px;border:1px solid #3b5cb3;background:#0b1220;color:#e9eef7;cursor:pointer;text-decoration:none;display:inline-block}
   .linkbtn:hover{transform:translateY(-1px)}
+
+  /* NEW: red delete "X" button */
+  .delbtn{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:22px;height:22px;min-width:22px;
+    margin-right:8px;border-radius:6px;border:1px solid #7f1d1d;
+    background:#3b0f12;color:#fecaca;font-weight:900;line-height:1;cursor:pointer;
+    user-select:none;
+  }
+  .delbtn:hover{ transform:translateY(-1px); }
+  .rownum{
+    display:inline-block;min-width:16px;text-align:right;
+  }
+  /* Keep first column compact */
+  td.idxcol{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -178,12 +193,41 @@
     return inp;
   }
 
+  function renumberRows(){
+    const rows = Array.from(byId('tbody').querySelectorAll('tr'));
+    rows.forEach((tr, i)=>{
+      const num = tr.querySelector('.rownum');
+      if (num) num.textContent = String(i+1);
+    });
+  }
+
+  function makeDeleteButton(tr){
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'delbtn';
+    btn.title = 'Remove this row';
+    btn.setAttribute('aria-label','Remove row');
+    btn.textContent = '×';
+    btn.addEventListener('click', ()=>{
+      tr.remove();
+      renumberRows();
+      setStatus('Row removed.');
+    });
+    return btn;
+  }
+
   function addPendingRow(serial){
     rowCount += 1;
     const tr = document.createElement('tr');
     tr.className = 'row-ghost';
 
-    const tdIdx  = document.createElement('td'); tdIdx.textContent = rowCount;
+    // First cell: red X + number
+    const tdIdx  = document.createElement('td'); tdIdx.className = 'idxcol';
+    const del = makeDeleteButton(tr);
+    const numSpan = document.createElement('span'); numSpan.className = 'rownum'; numSpan.textContent = rowCount;
+    tdIdx.appendChild(del);
+    tdIdx.appendChild(numSpan);
+
     const tdMfr  = document.createElement('td'); tdMfr.textContent = '';
     const tdModel= document.createElement('td'); tdModel.textContent = '';
     const tdSN   = document.createElement('td'); tdSN.textContent = serial || '';
@@ -206,7 +250,9 @@
 
     return {
       tr, tdIdx, tdMfr, tdModel, tdSN, tdCPU, tdRAM, tdAct,
-      setWorking(){ tdAct.innerHTML=''; tdAct.appendChild(makeStatusTag('working','Analyzing…')); tr.classList.add('row-ghost'); },
+      setWorking(){
+        tdAct.innerHTML=''; tdAct.appendChild(makeStatusTag('working','Analyzing…')); tr.classList.add('row-ghost');
+      },
       setReady(j){
         tr.classList.remove('row-ghost');
 
@@ -243,7 +289,7 @@
               body: JSON.stringify(payload)
             });
             const jj = await rr.json().catch(()=> ({}));
-            if(!rr.ok){ btn.disabled = False; throw new Error((jj && (jj.detail||jj.error)) || `HTTP ${rr.status}`); }
+            if(!rr.ok){ btn.disabled = false; throw new Error((jj && (jj.detail||jj.error)) || `HTTP ${rr.status}`); }
             tdAct.innerHTML = '';
             tdAct.appendChild(makeStatusTag('ready','Saved'));
             setStatus('Saved. You can keep adding laptops.');
@@ -282,12 +328,15 @@
     rows.forEach(tr=>{
       const tds = tr.querySelectorAll('td');
       if (tds.length < 7) return;
+      // Because first td contains delete button + number, read the number span
+      const idxSpan = tds[0].querySelector('.rownum');
+      const idx = idxSpan ? idxSpan.textContent.trim() : (tds[0].textContent || '').trim();
+
       function val(td){
         const inp = td.querySelector('input.cellInput');
         if (inp) return inp.value;
         return (td.textContent || '').trim();
       }
-      const idx   = val(tds[0]);
       const mfr   = val(tds[1]);
       const model = val(tds[2]);
       const sn    = val(tds[3]);
