@@ -55,7 +55,7 @@
       <h2>AI Manufacturing Label Intake (Photos + Serial/Tag → queued rows)</h2>
       <div class="small">
         A: <b>dark manufacturing/regulatory label</b>. B: <b>Service Tag sticker or keyboard side</b>.<br>
-        Enter an optional <b>Serial / Tag</b> (e.g., Lenovo <code>PF0UU8Y9</code> or Dell <code>HGQ5R73</code>).
+        Enter the device <b>Serial / Tag</b> (Dell 7-char Service Tag, or Lenovo/HP serial, etc.).
       </div>
     </div>
     <div><a class="linkbtn" href="/upload-db">Upload DB</a></div>
@@ -80,14 +80,10 @@
       <div class="hint">White ST/EX sticker or keyboard face.</div>
     </div>
 
-    <div class="card stack" style="min-width:300px">
+    <div class="card stack" style="min-width:280px">
       <div class="stack">
-        <label for="serialInput" style="font-size:13px;color:#9fb0c7">Serial / Tag (optional)</label>
+        <label for="serialInput" style="font-size:13px;color:#9fb0c7">Serial / Tag</label>
         <input id="serialInput" type="text" placeholder="e.g., PF0UU8Y9 or HGQ5R73" autocomplete="off">
-      </div>
-      <div class="stack">
-        <label for="mtmInput" style="font-size:13px;color:#9fb0c7">Lenovo MTM (optional)</label>
-        <input id="mtmInput" type="text" placeholder="e.g., 20L5S0ABC0" autocomplete="off">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
         <button id="resetBtn"   type="button">Reset</button>
@@ -124,13 +120,16 @@
 <script>
 (function(){
   function byId(id){ return document.getElementById(id); }
+
+  // NEW: accept any length (letters/digits), uppercase, NO truncation
   function normalizeSerial(v){ return (v||"").toUpperCase().replace(/[^A-Z0-9]/g,""); }
-  function normalizeMTM(v){ return (v||"").toUpperCase().replace(/[^A-Z0-9]/g,""); }
+
   function setStatus(msg, isErr=false){
     const s = byId('statusMsg'); if(!s) return;
     s.textContent = msg || "";
     s.className = "hint " + (isErr ? "err" : "ok");
   }
+
   function rebuildBox(boxId, inputId){
     const box = byId(boxId);
     while(box.firstChild){ box.removeChild(box.firstChild); }
@@ -153,14 +152,15 @@
     });
     return input;
   }
+
   function hardResetUI(){
     rebuildBox('boxA','fileA');
     rebuildBox('boxB','fileB');
     const serial = byId('serialInput'); if (serial) serial.value = "";
-    const mtm = byId('mtmInput'); if (mtm) mtm.value = "";
     setStatus("");
     const ab = byId('analyzeBtn'); if(ab) ab.disabled = false;
   }
+
   function getFilesSafe(){
     let fileA = byId('fileA'); if(!fileA) fileA = rebuildBox('boxA','fileA');
     let fileB = byId('fileB'); if(!fileB) fileB = rebuildBox('boxB','fileB');
@@ -239,6 +239,7 @@
           try{
             btn.disabled = true;
 
+            // Merge edited values into payload
             const payload = Object.assign({}, j, {
               manufacturer: inpMfr.value.trim(),
               model_no:     inpModel.value.trim(),
@@ -334,11 +335,12 @@
     const analyzeBtn    = byId('analyzeBtn');
     const resetBtn      = byId('resetBtn');
     const serialEl      = byId('serialInput');
-    const mtmEl         = byId('mtmInput');
     const downloadBtn   = byId('downloadCsvBtn');
 
-    serialEl.addEventListener('input', ()=> { serialEl.value = normalizeSerial(serialEl.value); });
-    mtmEl.addEventListener('input', ()=> { mtmEl.value = normalizeMTM(mtmEl.value); });
+    // Keep input clean, but do NOT truncate
+    serialEl.addEventListener('input', ()=>{
+      serialEl.value = normalizeSerial(serialEl.value);
+    });
 
     resetBtn.addEventListener('click', hardResetUI);
     downloadBtn.addEventListener('click', tableToCSV);
@@ -346,20 +348,17 @@
     analyzeBtn.addEventListener('click', async () => {
       try{
         const { fileA, fileB } = getFilesSafe();
-        const st  = normalizeSerial(serialEl.value);
-        const mtm = normalizeMTM(mtmEl.value);
+        const st = normalizeSerial(serialEl.value);
 
-        // Require both photos (core behavior)
+        // Require both photos (vision is your base truth)
         if(!(fileA.files && fileA.files[0]) || !(fileB.files && fileB.files[0])){
           setStatus("Please add both photos before analyzing.", true);
           return;
         }
 
-        // Capture files before clearing the UI
         const fa = fileA.files[0];
         const fb = fileB.files[0];
 
-        // Create a row immediately (queued)
         const row = addPendingRow(st);
         row.setWorking();
 
@@ -367,18 +366,16 @@
         hardResetUI();
         setStatus("Queued. You can add the next laptop while this analyzes.");
 
-        // Build request with captured files
+        // Build request
         const fd = new FormData();
         fd.append('fileA', fa);
         fd.append('fileB', fb);
-        if (st)  fd.append('manual_serial', st);
-        if (mtm) fd.append('manual_mtm', mtm);
+        if (st) fd.append('manual_serial', st);
 
         const r = await fetch('/analyze_pair', { method:'POST', body: fd });
         const j = await r.json().catch(()=> ({}));
         if(!r.ok){ throw new Error((j && (j.detail||j.error)) || `HTTP ${r.status}`); }
 
-        // Populate row when done (editable)
         row.setReady(j);
       }catch(e){
         setStatus("Analyze failed: " + e.message, true);
