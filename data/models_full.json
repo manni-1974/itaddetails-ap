@@ -1,0 +1,2898 @@
+{
+  "version": 1,
+  "generated_from": "AI database.xlsx",
+  "count": 413,
+  "models": [
+    {
+      "manufacturer": "APPLE",
+      "model_no": "iMac19,2",
+      "cpu": "Intel(R) Core(TM) i3-8100 CPU @ 3.60GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "APPLE",
+      "model_no": "iMac19,1",
+      "cpu": "Intel(R) Core(TM) i9-9900K CPU @ 3.60GHz",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "APPLE",
+      "model_no": "iMac20,1",
+      "cpu": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+      "ram": "64 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "APPLE",
+      "model_no": "MacPro7,1",
+      "cpu": "Intel(R) Xeon(R) CPU W3223 @ 3.50GHz",
+      "ram": "192 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "APPLE",
+      "model_no": "Apple T2 iMacPro1,1",
+      "cpu": "Intel(R) Xeon(R) W-2140B CPU @ 3.20GHz",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "APPLE",
+      "model_no": "Apple T2 MacMini8,1",
+      "cpu": "Intel(R) Core(TM) i3-8100B CPU @ 3.60GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "APPLE",
+      "model_no": "Apple T2 MacPro 7,1",
+      "cpu": "Intel(R) Xeon(R) W-3235 CPU @ 3.30GHz",
+      "ram": "96 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "APPLE",
+      "model_no": "Apple T2 iMac20,1",
+      "cpu": "Intel(R) Core(TM) i7-10700K CPU @ 3.80GHz",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "APPLE",
+      "model_no": "Mac mini (M1, 2020)",
+      "cpu": "Apple M1",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "APPLE",
+      "model_no": "Macmini8,1",
+      "cpu": "Intel(R) Core(TM) i7-8700B CPU @ 3.20GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "APPLE",
+      "model_no": "iMac21,1",
+      "cpu": "Apple M1",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 7080",
+      "cpu": "Intel(R) Core(TM) i5-10500T CPU @ 2.30GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 7000",
+      "cpu": "12th Gen Intel(R) Core(TM) i5-12500T",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 7070",
+      "cpu": "Intel(R) Core(TM) i5-9500T CPU @ 2.20GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "Latitude 7490",
+      "cpu": "Intel(R) Core(TM) i5-8350U CPU @ 1.70GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 3000",
+      "cpu": "12th Gen Intel(R) Core(TM) i5-12500T",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 5490 AIO",
+      "cpu": "Intel(R) Core(TM) i7-10700T CPU @ 2.00GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 5260 AIO",
+      "cpu": "Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 3080",
+      "cpu": "Intel(R) Core(TM) i5-10500T CPU @ 2.30GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 3070",
+      "cpu": "Intel(R) Core(TM) i5-9500T CPU @ 2.20GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 3090",
+      "cpu": "Intel(R) Core(TM) i5-10500T CPU @ 2.30GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex Micro Plus 7010",
+      "cpu": "13th Gen Intel(R) Core(TM) i5-13500T",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex Micro 7010",
+      "cpu": "13th Gen Intel(R) Core(TM) i5-13500T",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 5070",
+      "cpu": "Intel(R) Core(TM) i7-9700T CPU @ 2.00GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 7090",
+      "cpu": "Intel(R) Core(TM) i5-10505 CPU @ 3.20GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 7060",
+      "cpu": "Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 5090",
+      "cpu": "11th Gen Intel(R) Core(TM) i5-11500 @ 2.70GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 5060",
+      "cpu": "Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "Inspiron 5490 AIO",
+      "cpu": "Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 7490 AIO",
+      "cpu": "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "OptiPlex 7460 AIO",
+      "cpu": "Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "Precision 5820 Tower",
+      "cpu": "Intel(R) Xeon(R) W-2225 CPU @ 4.10GHz",
+      "ram": "64 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "GEECOM",
+      "model_no": "Mini IT 8",
+      "cpu": "Intel(R) Core(TM) i5-8279U CPU @ 2.40GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "GEECOM",
+      "model_no": "Mini IT 11",
+      "cpu": "11th Gen Intel(R) Core(TM) i7-11390H @ 3.40GHz",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP Elite Mini 800 G9 Desktop PC",
+      "cpu": "Intel(R) Core(TM) i5-14500T",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteDesk 705 G4 SFF",
+      "cpu": "AMD Ryzen 5 PRO 2400G with Radeon Vega Graphics",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteOne 870 27 inch G9 All-in-One Desktop PC",
+      "cpu": "12th Gen Intel(R) Core(TM) i7-12700",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteOne 840 23.8 inch G9 All-in-One Desktop PC",
+      "cpu": "12th Gen Intel(R) Core(TM) i7-12700",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteDesk 800 G4 DM 35W",
+      "cpu": "Intel(R) Core(TM) i5-8500T CPU @ 2.10GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteDesk 800 G4 DM 35W (TAA)",
+      "cpu": "Intel(R) Core(TM) i5-8500T CPU @ 2.10GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteDesk 800 G4 DM 65W (TAA)",
+      "cpu": "Intel(R) Core(TM) i5-8600 CPU @ 3.10GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteDesk 800 G4 SFF",
+      "cpu": "Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteDesk 800 G4 TWR",
+      "cpu": "Intel(R) Core(TM) i3-8100 CPU @ 3.60GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteDesk 800 G5 Desktop Mini",
+      "cpu": "Intel(R) Core(TM) i5-9500T CPU @ 2.20GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteDesk 800 G5 SFF",
+      "cpu": "Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteDesk 800 G6 Desktop Mini PC",
+      "cpu": "Intel(R) Core(TM) i5-10500T CPU @ 2.30GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ProDesk 400 G6 Desktop Mini PC",
+      "cpu": "Intel(R) Core(TM) i5-10500T CPU @ 2.30GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ProDesk 405 G4 Desktop Mini",
+      "cpu": "AMD Ryzen 5 PRO 2400GE w/ Radeon Vega Graphics",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ProDesk 600 G4 DM",
+      "cpu": "Intel(R) Core(TM) i5-8500T CPU @ 2.10GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ProDesk 600 G4 DM (TAA)",
+      "cpu": "Intel(R) Core(TM) i5-8500T CPU @ 2.10GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP All-in-One 24-f0xx",
+      "cpu": "Intel(R) Core(TM) i3-8130U CPU @ 2.20GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP All-in-One 22-c0xx",
+      "cpu": "Intel(R) Core(TM) i3-8130U CPU @ 2.20GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ProDesk 600 G4 MT",
+      "cpu": "Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ProDesk 600 G4 SFF",
+      "cpu": "Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ProDesk 600 G6 Desktop Mini PC",
+      "cpu": "Intel(R) Core(TM) i5-10500T CPU @ 2.30GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP Z1 Entry Tower G5",
+      "cpu": "Intel(R) Core(TM) i3-8100 CPU @ 3.60GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP Z2 G8 Tower Workstation Desktop PC",
+      "cpu": "11th Gen Intel(R) Core(TM) i5-11500 @ 2.70GHz",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP Z2 Mini G4 Workstation",
+      "cpu": "Intel(R) Core(TM) i7-9700 CPU @ 3.00GHz",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP Z2 SFF G5 Workstation",
+      "cpu": "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP Z2 Tower G4 Workstation",
+      "cpu": "Intel(R) Xeon(R) E-2144G CPU @ 3.60GHz",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP Z4 G4 Workstation",
+      "cpu": "Intel(R) Xeon(R) W-2125 CPU @ 4.00GHz",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP Z4 WORKSTATION",
+      "cpu": "Intel(R) Xeon(R) W-2125 CPU @ 4.00GHz",
+      "ram": "64 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP Z6 G4 Workstation",
+      "cpu": "Intel(R) Xeon(R) Gold 6226R CPU @ 2.90GHz",
+      "ram": "64 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "INTEL",
+      "model_no": "NUC11ATKC2",
+      "cpu": "Intel(R) Celeron(R) CPU N4505 @ 2.00GHz",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "10RRS1QE00 - M920q",
+      "cpu": "Intel(R) Core(TM) i5-8500T CPU @ 2.10GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "10RRS4QS0Q - M920q",
+      "cpu": "Intel(R) Core(TM) i5-8500T CPU @ 2.10GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "10RS0014US - M920q",
+      "cpu": "Intel(R) Core(TM) i5-8500T CPU @ 2.10GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "10S7S0JX00 - M920z AIO",
+      "cpu": "Intel(R) Core(TM) i7-8700 CPU @ 3.20GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "10SGS1JC00 - M920t",
+      "cpu": "Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "10SKS4VM12 - M920s",
+      "cpu": "Intel(R) Core(TM) i5-8500 CPU @ 3.00GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "10T7003LUS - M720q",
+      "cpu": "Intel(R) Core(TM) i5-8400T CPU @ 1.70GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "10T8SJXY00 - M720q",
+      "cpu": "Intel(R) Core(TM) i5-8600T CPU @ 2.30GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "10TCS0K700 - M720q",
+      "cpu": "Intel(R) Core(TM) i3-8100T CPU @ 3.10GHz",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "11A5S19C00 - M75q-1",
+      "cpu": "AMD Ryzen 3 PRO 3200GE w/ Radeon Vega Graphics",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "11DBS5W900 - M70s",
+      "cpu": "Intel(R) Core(TM) i5-10500 CPU @ 3.10GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "11DGS0YC00 - M90q",
+      "cpu": "Intel(R) Core(TM) i5-10500T CPU @ 2.30GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "11DN0036US - M80q",
+      "cpu": "Intel(R) Core(TM) i5-10500T CPU @ 2.30GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "11DN0039US - M80q",
+      "cpu": "Intel(R) Core(TM) i5-10500T CPU @ 2.30GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "11DUS5SL00 - M70q",
+      "cpu": "Intel(R) Core(TM) i5-10400T CPU @ 2.00GHz",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "11H10008US - ThinkSmart Hub Teams",
+      "cpu": "Intel(R) Core(TM) i5-8365U CPU @ 1.60GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "11H30007US - ThinkSmart Hub Zoom",
+      "cpu": "Intel(R) Core(TM) i5-8365U CPU @ 1.60GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "12TES10800 - M70q Gen 5",
+      "cpu": "13th Gen Intel(R) Core(TM) i5-13500T",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "F0DN005UUS - AIO 520-24ARR",
+      "cpu": "AMD Ryzen 3 2200GE with Radeon Vega Graphics",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "F0EA000GUS - AIO A340-22IGM",
+      "cpu": "Intel(R) Pentium(R) Silver J5005 CPU @ 1.50GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "F0EM006YUS - AIO A540-24API",
+      "cpu": "AMD Ryzen 3 3200GE with Radeon Vega Graphics",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteDesk 800 G4 DM",
+      "cpu": "Intel(R) Core(TM) i5-8500T CPU @ 2.10GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "7400 LATITUDE",
+      "cpu": "i7-8665U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "7420 Latitude",
+      "cpu": "i5-1145G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "INSPIRON 16 5620",
+      "cpu": "i7-1255U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "Latitude 3520",
+      "cpu": "i5-1135G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "LATITUDE 5400",
+      "cpu": "i7-8665U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "LATITUDE 5410",
+      "cpu": "i5-10310U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "Latitude 5411",
+      "cpu": "i5-10400H",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "LATITUDE 5420",
+      "cpu": "i5-1145G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "LATITUDE 5430",
+      "cpu": "i7-1265U",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "Latitude 5510",
+      "cpu": "i7-10610U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "LATITUDE 5521",
+      "cpu": "i5-11500H",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "Latitude 5590",
+      "cpu": "i7-8650U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "LATITUDE 7320",
+      "cpu": "i7-1165G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "Latitude 7410",
+      "cpu": "i7-10610U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "LATITUDE 7520",
+      "cpu": "i7-1165G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "LATITUDE 9520",
+      "cpu": "i5-1145G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "PRECISION 3550",
+      "cpu": "i7-10610U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "Precision 3561",
+      "cpu": "i7-11850H",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "PRECISION 5520",
+      "cpu": "E3-1505M v6",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "PRECISION 5530",
+      "cpu": "i7-8850H",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "PRECISION 5540",
+      "cpu": "i7-9850H",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "PRECISION 5560",
+      "cpu": "i7-11850H",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "PRECISION 5750",
+      "cpu": "i5-10400H",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "PRECISION 7530",
+      "cpu": "i7-8750H",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "Precision 7540",
+      "cpu": "i9-9880H",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "DELL",
+      "model_no": "XPS 13 9380",
+      "cpu": "i7-8565U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "250 G9",
+      "cpu": "i5-1235U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 1040 G4",
+      "cpu": "i7-7820HQ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Elitebook 830 G6",
+      "cpu": "i7-8565U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 835 G7",
+      "cpu": "Ryzen 5 4650U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "EliteBook 840 G5",
+      "cpu": "i5-8250U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "EliteBook 840 G6",
+      "cpu": "i5-8265U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "EliteBook 840 G7",
+      "cpu": "i7-10510U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 840 G8",
+      "cpu": "i5-1135G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 845 G7",
+      "cpu": "Ryzen 7 4750U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 850 G5",
+      "cpu": "i5-7200U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 850 G6",
+      "cpu": "i5-8365U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK FOLIO 1040 G3",
+      "cpu": "i5-6200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK X360 1030 G2",
+      "cpu": "i5-7300U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Elitebook x360 1040 G6",
+      "cpu": "i5-8265U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK X360 830 G7",
+      "cpu": "i5-10310U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP EliteBook x360 830 G6",
+      "cpu": "i7-8565U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "IDEAPAD 330S",
+      "cpu": "i5-8250U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "OMEN 15-AK0013DX",
+      "cpu": "i7-10750H",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "PROBOOK 430 G6",
+      "cpu": "i7-8565U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "X360 M CONVERTIBLE",
+      "cpu": "i7-1165G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ZBOOK 14U G6",
+      "cpu": "i7-8565U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ZBOOK 15U G6",
+      "cpu": "i7-8565U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ZBOOK FIREFLY 14 G8",
+      "cpu": "i7-1185G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ZBOOK FIREFLY 15 G7",
+      "cpu": "i7-10510U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Zbook Studio G5",
+      "cpu": "i7-8750H",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "MICROSOFT",
+      "model_no": "SURFACE LAPTOP 3",
+      "cpu": "i5-1035G7",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "MICROSOFT",
+      "model_no": "SURFACE PRO 7",
+      "cpu": "i7-1065G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "IDEAPAD 1 14IAU7",
+      "cpu": "i3-1215U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "IDEAPAD FLEX 5",
+      "cpu": "i7-1065G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "Lenovo V14 G4 AMN",
+      "cpu": "Ryzen 5 7520U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "P15s ThinkPad",
+      "cpu": "i7-10510U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "P15s ThinkPad GEN 2",
+      "cpu": "i7-1165G7",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "ThinkPad L15",
+      "cpu": "i7-10510U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "ThinkPad L480",
+      "cpu": "i5-7300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "ThinkPad P1",
+      "cpu": "i7-10750H",
+      "ram": "64 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "THINKPAD P14S",
+      "cpu": "i7-1270P",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "ThinkPad P16s",
+      "cpu": "i7-1260P",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "ThinkPad P16s GEN 1",
+      "cpu": "i7-1260P",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "THINKPAD P40 YOGA",
+      "cpu": "i7-6500U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "ThinkPad T14",
+      "cpu": "i5-10310U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "ThinkPad T14s",
+      "cpu": "i5-10210U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "ThinkPad T15",
+      "cpu": "i7-10510U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "THINKPAD T480S",
+      "cpu": "i5-8350U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "THINKPAD T490S",
+      "cpu": "i5-8365U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "ThinkPad T495",
+      "cpu": "Ryzen 5 3500U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "THINKPAD T580",
+      "cpu": "i7-8650U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "THINKPAD T590",
+      "cpu": "i7-8565U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "THINKPAD X1 YOGA",
+      "cpu": "i5-10310U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "THINKPAD X1 YOGA Gen 3",
+      "cpu": "i5-8250U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "THINKPAD X1 YOGA GEN 4",
+      "cpu": "i5-8365U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "ThinkPad X390 Yoga",
+      "cpu": "i7-8665U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "THINKPAD YOGA 370",
+      "cpu": "i5-7300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "YOGA 7",
+      "cpu": "i5-1135G7",
+      "ram": "12 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "LENOVO",
+      "model_no": "YOGA C930",
+      "cpu": "i7-8550U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E7450",
+      "cpu": "i5-5200U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 5580",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E5570",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 7480",
+      "cpu": "i7-7600U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Apple",
+      "model_no": "A1707",
+      "cpu": "i7-7700HQ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Apple",
+      "model_no": "A1398",
+      "cpu": "i7-4870HQ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Toshiba",
+      "model_no": "TECRA X40-D",
+      "cpu": "i5-7300U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 840 G3",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 5480",
+      "cpu": "i5-7300U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E5470",
+      "cpu": "i5-6440HQ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E7470",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD S1 YOGA 12",
+      "cpu": "i5-5200U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD P70",
+      "cpu": "i7-6700HQ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "XPS 15 9550",
+      "cpu": "i7-6700HQ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD E480",
+      "cpu": "i5-7200U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E5550",
+      "cpu": "i3-5010U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "PRECISION 7510",
+      "cpu": "i7-6820HQ",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Apple",
+      "model_no": "A1466",
+      "cpu": "i7-5650U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Apple",
+      "model_no": "A1502",
+      "cpu": "i5-5257U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T470",
+      "cpu": "i7-7500U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "15-BS0XX",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "NOTEBOOK",
+      "cpu": "i3-7100U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "PAVILION NOTEBOOK",
+      "cpu": "i7-6500U",
+      "ram": "12 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "15-DB1XXX",
+      "cpu": "RYZEN 7 3700U WITH RADEON VEGA MOBILE GFX",
+      "ram": "12 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "INSPIRON 5759",
+      "cpu": "i7-6500U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 850 G3",
+      "cpu": "i5-6200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E6440",
+      "cpu": "i5-4310M",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "PRECISION 7520",
+      "cpu": "i7-6820HQ",
+      "ram": "64 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 5280",
+      "cpu": "i7-7600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK FOLIO 1040 G4",
+      "cpu": "i7-7600U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "PROBOOK 650 G2",
+      "cpu": "i5-6300U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "PROBOOK 650 G3",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 5414",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Apple",
+      "model_no": "A1708",
+      "cpu": "i5-7360U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T470S W10DG",
+      "cpu": "i7-6600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T460S",
+      "cpu": "i7-6600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD E580",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 7290",
+      "cpu": "i5-7300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD P50S",
+      "cpu": "i7-6500U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E7440",
+      "cpu": "i7-4600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Apple",
+      "model_no": "A1706",
+      "cpu": "i5-6267U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 840 G4",
+      "cpu": "i7-7500U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD X1C 5TH W10DG",
+      "cpu": "i7-6600U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T460",
+      "cpu": "i5-6300U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T470 W10DG",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E7250",
+      "cpu": "i7-5600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD X260",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T480",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD X1 CARBON 4TH",
+      "cpu": "i7-6500U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T440",
+      "cpu": "i5-4300U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD X270 W10DG",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T450",
+      "cpu": "i5-5300U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "XPS 15 9560",
+      "cpu": "i7-7700HQ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD X1 CARBON 5TH",
+      "cpu": "i7-7500U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "T470",
+      "cpu": "i5-6300U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Latitude 3380",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK FOLIO 9480M",
+      "cpu": "i7-4600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD X1 YOGA 1ST",
+      "cpu": "i7-6600U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 7280",
+      "cpu": "i5-7300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "ThinkPad 13",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "PROBOOK 640 G2",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "PROBOOK 450 G3",
+      "cpu": "i5-6200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T440S",
+      "cpu": "i7-4600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "EliteBook Folio G2",
+      "cpu": "i7-5600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ZBOOK STUDIO G3",
+      "cpu": "i7-6820HQ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "XPS 13 9360",
+      "cpu": "i7-7560u",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD P50",
+      "cpu": "i7-6820HQ",
+      "ram": "32 Gb",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ElitteBook Folio 1040 G3",
+      "cpu": "i5-6300u",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 820 G4",
+      "cpu": "i5-7200U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD X270",
+      "cpu": "i7-7500U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "17-CA1XXX",
+      "cpu": "RYZEN 7 3700U WITH RADEON VEGA MOBILE GFX",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 7380",
+      "cpu": "i7-6600U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E7270",
+      "cpu": "i7-6600U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Asus",
+      "model_no": "ZENBOOK Q406DA",
+      "cpu": "RYZEN 5 3500U WITH RADEON VEGA MOBILE GFX",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ZBOOK 15 G3",
+      "cpu": "i7-6700HQ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "INSPIRON 15-3567",
+      "cpu": "i3-7100U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Asus",
+      "model_no": "Q406D",
+      "cpu": "AMDS Ryzen 5 3500U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 850 G4",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "IDEAPAD 3 14ADA05",
+      "cpu": "RYZEN 5 3500U WITH RADEON VEGA MOBILE GFX",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Acer",
+      "model_no": "ASPIRE A515-43",
+      "cpu": "RYZEN 3 3200U WITH RADEON VEGA MOBILE GFX",
+      "ram": "12 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "INSPIRON 5559",
+      "cpu": "i5-6200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 3480",
+      "cpu": "i5-6200U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ProBook 640 G4",
+      "cpu": "",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ProBook 640 G2 Notebook",
+      "cpu": "",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Precision 3510",
+      "cpu": "i5-6440HQ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ProBook 640 G3",
+      "cpu": "",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD X1 YOGA 2ND",
+      "cpu": "i7-7600U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "LENOVO V330-15IKB",
+      "cpu": "i5-7200U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Inspiron 15",
+      "cpu": "i5-7200U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Asus",
+      "model_no": "X556UA",
+      "cpu": "i5-6200U",
+      "ram": "12 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Asus",
+      "model_no": "X556UAK",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP PROBOOK 650 G3",
+      "cpu": "INTEL(R) CORE(TM) I5-7300U CPU @ 2.60GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK 840 G3",
+      "cpu": "INTEL(R) CORE(TM) I5-6200U CPU @ 2.30GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK 745 G6 QEB2020B",
+      "cpu": "AMD RYZEN 5 PRO 3500U W/ RADEON VEGA MOBILE GFX",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK 745 G6",
+      "cpu": "AMD RYZEN 5 3500U WITH RADEON VEGA MOBILE GFX",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP PROBOOK 650 G2",
+      "cpu": "INTEL(R) CORE(TM) I5-6300U CPU @ 2.40GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20JNS3EJ00",
+      "cpu": "INTEL(R) CORE(TM) I5-6200U CPU @ 2.30GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20FMS63700",
+      "cpu": "INTEL(R) CORE(TM) I5-6200U CPU @ 2.30GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP PROBOOK 640 G2",
+      "cpu": "INTEL(R) CORE(TM) I5-6300U CPU @ 2.40GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP PROBOOK 640 G4",
+      "cpu": "INTEL(R) CORE(TM) I5-7200U CPU @ 2.50GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP PROBOOK 440 G4",
+      "cpu": "INTEL(R) CORE(TM) I5-7200U CPU @ 2.50GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP PROBOOK 640 G3",
+      "cpu": "INTEL(R) CORE(TM) I5-7200U CPU @ 2.50GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP PROBOOK 640 G4 QEB19B",
+      "cpu": "INTEL(R) CORE(TM) I5-7200U CPU @ 2.50GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20JNS06900",
+      "cpu": "INTEL(R) CORE(TM) I5-6200U CPU @ 2.30GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ZBOOK 15 G4",
+      "cpu": "INTEL(R) CORE(TM) I5-7440HQ CPU @ 2.80GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 3570",
+      "cpu": "INTEL(R) CORE(TM) I5-6200U CPU @ 2.30GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "PRECISION 3520",
+      "cpu": "INTEL(R) CORE(TM) I5-7440HQ CPU @ 2.80GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20FMS29V00",
+      "cpu": "INTEL(R) CORE(TM) I5-6200U CPU @ 2.30GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E5270",
+      "cpu": "INTEL(R) CORE(TM) I5-6300U CPU @ 2.40GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK 820 G4",
+      "cpu": "INTEL(R) CORE(TM) I5-7300U CPU @ 2.60GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 820/828",
+      "cpu": "INTEL(R) CORE(TM) I5-7300U CPU @ 2.60GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "PROBOOK 450",
+      "cpu": "INTEL(R) CORE(TM) I5-6200U CPU @ 2.30GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20JD0022US",
+      "cpu": "7TH GEN INTEL(R) CORE(TM) I5-7200U @ 2.50 GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 5289",
+      "cpu": "i7-7600U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "PRECISION 5510",
+      "cpu": "i7-6820HQ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "15-EF0XXX",
+      "cpu": "RYZEN 5 3500U WITH RADEON VEGA MOBILE GFX",
+      "ram": "12 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Inspiron 15 5566",
+      "cpu": "i5-7200u",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "INSPIRON 15-7579",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "LENOVO IDEAPAD S145-15API",
+      "cpu": "RYZEN 3 3200U WITH RADEON VEGA MOBILE GFX",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "VOSTRO 5568",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "PROBOOK 430 G4",
+      "cpu": "i5-7200U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 5490",
+      "cpu": "i5-7300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 830 G5",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T470S",
+      "cpu": "i7-7600U",
+      "ram": "12 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP SPECTRE PRO X360 G2",
+      "cpu": "INTEL(R) CORE(TM) I7-6600U CPU @ 2.60GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ZBOOK STUDIO G3",
+      "cpu": "INTEL(R) CORE(TM) I7-6820HQ CPU @ 2.70GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK 840 G4",
+      "cpu": "INTEL(R) CORE(TM) I7-7500U CPU @ 2.70GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "PRECISION 7710",
+      "cpu": "INTEL(R) CORE(TM) I7-6820HQ CPU @ 2.70GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T460P",
+      "cpu": "INTEL(R) CORE(TM) I7-6820HQ CPU @ 2.70GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T450S",
+      "cpu": "INTEL(R) CORE(TM) I7-5600U CPU @ 2.60GHZ",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ZBOOK 15 G3",
+      "cpu": "INTEL(R) CORE(TM) I7-6700HQ CPU @ 2.60GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ZBOOK STUDIO G4",
+      "cpu": "INTEL(R) CORE(TM) I7-7700HQ CPU @ 2.80GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK 850 G4",
+      "cpu": "INTEL(R) CORE(TM) I7-7500U CPU @ 2.70GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK 755 G5",
+      "cpu": "RYZEN 7 PRO 2700U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Google",
+      "model_no": "PIXELBOOK",
+      "cpu": "INTEL(R) CORE(TM) I7-7Y75 CPU @ 1.30GHZ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD C13 YOGA CHROMEBOOK",
+      "cpu": "RYZEN 5 3500C",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 845 G7 NOTEBOOK PC",
+      "cpu": "RYZEN 7 PRO 4750U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "INSPIRON 3558",
+      "cpu": "CORE I5-5200U 2.20 GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "CHROMEBOOK 13 G1",
+      "cpu": "INTEL(R) CORE(TM) M7-6Y75 CPU @ 1.20GHZ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 14 E7470",
+      "cpu": "I5-6300U CPU @ 2.40GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 14 5480",
+      "cpu": "I5-7300U CPU @2.60GHZ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Toshiba",
+      "model_no": "TECRA Z40T-C",
+      "cpu": "I5-6300U CPU 2.50GHZ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 14 E7450",
+      "cpu": "I5-5300U CPU @ 2.30GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE 14 7480",
+      "cpu": "I5-7300U CPU @ 2.60GHZ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Toshiba",
+      "model_no": "TECRA A40-D",
+      "cpu": "I5-7300U @ CPU 2.600GHZ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 850 G1",
+      "cpu": "I5-5200U CPU @2.20GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Asus",
+      "model_no": "UX303UA",
+      "cpu": "i5-6200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Asus",
+      "model_no": "UX330UAK",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20HGS16A00",
+      "cpu": "INTEL(R) CORE(TM) I7-7600U CPU @ 2.80GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20HGS12700",
+      "cpu": "INTEL(R) CORE(TM) I7-7600U CPU @ 2.80GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20BWS0EX00",
+      "cpu": "INTEL(R) CORE(TM) I7-5600U CPU @ 2.60GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK FOLIO 1040 G2",
+      "cpu": "INTEL(R) CORE(TM) I7-5600U CPU @ 2.60GHZ",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20BU0007US",
+      "cpu": "INTEL(R) CORE(TM) I7-5600U CPU @ 2.60GHZ",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20ELS0HX00",
+      "cpu": "INTEL(R) CORE(TM) I7-6500U CPU @ 2.50GHZ",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP PROBOOK 445 G7",
+      "cpu": "AMD RYZEN 7 4700U WITH RADEON GRAPHICS",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ZBOOK 15U G3",
+      "cpu": "INTEL(R) CORE(TM) I7-6500U CPU @ 2.50GHZ",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20FAS39X00",
+      "cpu": "INTEL(R) CORE(TM) I7-6600U CPU @ 2.60GHZ",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "PROBOOK 445 G7",
+      "cpu": "RYZEN 7 4700U",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "20JM000BUS",
+      "cpu": "INTEL(R) CORE(TM) I7-6500U CPU @ 2.50GHZ",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HSN-I04C",
+      "cpu": "INTEL i5 7th GEN",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "X270",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "IdeaPad Flex 5 1470",
+      "cpu": "i5-7200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "EliteBook 745 G5",
+      "cpu": "AMD RYzen 5 PRO 2500U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "PRECISION 7720",
+      "cpu": "INTEL(R) CORE(TM) I7-7820HQ CPU @ 2.90GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "15T-W100",
+      "cpu": "6TH GEN INTEL(R) CORE(TM) I5-6200U @ 2.30 GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "LATITUDE E6540",
+      "cpu": "INTEL(R) CORE(TM) I7-4610M CPU @ 3.00GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ZBOOK 17 G2",
+      "cpu": "INTEL(R) CORE(TM) I7-4710MQ CPU @ 2.50GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "PRECISION M6800",
+      "cpu": "INTEL(R) CORE(TM) I7-4940MX CPU @ 3.10GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "PRECISION M4800",
+      "cpu": "INTEL(R) CORE(TM) I7-4810MQ CPU @ 2.80GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "IDEAPAD 510-15ISK",
+      "cpu": "INTEL(R) CORE(TM) I5-6200U CPU @ 2.30GHZ",
+      "ram": "4 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK 820 G4 QEB18B",
+      "cpu": "INTEL(R) CORE(TM) I5-7200U CPU @ 2.50GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ELITEBOOK 745 G6",
+      "cpu": "AMD RYZEN 5 PRO 3500U W/ RADEON VEGA MOBILE GFX",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD E15 GEN 2",
+      "cpu": "RYZEN 5 4500U",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "XPS 13 9350",
+      "cpu": "i5-6200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "EliteBook Follo 1040 G3 Notebook",
+      "cpu": "i6-6300",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "P50",
+      "cpu": "i7-6820HQ",
+      "ram": "16 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "EliteDesk 800 G3 Mini 65W",
+      "cpu": "i5-6500",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "E7470",
+      "cpu": "i5-6300U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD T14S GEN 1",
+      "cpu": "RYZEN 5 PRO 4650U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK X360 1030 G2",
+      "cpu": "INTEL(R) CORE(TM) I5-7300U CPU @ 2.60GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD E570",
+      "cpu": "INTEL(R) CORE(TM) I5-7200U CPU @ 2.50GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK 840",
+      "cpu": "INTEL(R) CORE(TM) I5-7300U CPU @ 2.60GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD YOGA 260",
+      "cpu": "INTEL(R) CORE(TM) I5-6300U CPU @ 2.40GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK X360 1040",
+      "cpu": "INTEL(R) CORE(TM) I5-7300U CPU @ 2.60GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD YOGA 14",
+      "cpu": "INTEL(R) CORE(TM) I5-6200U CPU @ 2.30GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "HP ELITEBOOK 820 G3",
+      "cpu": "INTEL(R) CORE(TM) I5-6200U CPU @ 2.30GHZ",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "THINKPAD A485",
+      "cpu": "AMD RYZEN 5 PRO 2500U W/ RADEON VEGA MOBILE GFX",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "T470s",
+      "cpu": "i7-6600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "IdeaPad S145-15API",
+      "cpu": "Ryzen 3 3200U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Lattitude 3500 2n1",
+      "cpu": "i7-8665U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Lattitude 7300",
+      "cpu": "i7-8665U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Lattitude 5590",
+      "cpu": "i5-8th gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 5500",
+      "cpu": "i7-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Lattitude 5410",
+      "cpu": "i5-1031U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Lattitude E7470",
+      "cpu": "i7-6600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Lattitude 5510",
+      "cpu": "i5-8th gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Lattitude E5570",
+      "cpu": "i7-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Lattitude 5580",
+      "cpu": "i5-8th gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Precision 3530",
+      "cpu": "i7-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Precision  3550",
+      "cpu": "i7-10th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude  5580",
+      "cpu": "i7-7th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 3510",
+      "cpu": "i5-10th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Elitebook",
+      "cpu": "i7-7th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Elitebook 865 G9",
+      "cpu": "AMD Ryzen 5 6600U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Elitebook 820 G3",
+      "cpu": "i7-6th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "ProBook 440 G7",
+      "cpu": "i5-10th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "ThinkBook 14s IWL",
+      "cpu": "i5-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "ThinkBook 13s IWL",
+      "cpu": "i5-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Acer",
+      "model_no": "Aspire 5755 Series",
+      "cpu": "i5-2nd Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Elitebook 850 G8",
+      "cpu": "i5-11th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "Thinkpad E15",
+      "cpu": "i7-11th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 3500",
+      "cpu": "i5-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Hp Spectre",
+      "cpu": "i7-7th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Hp",
+      "model_no": "envy x360 m Convertible",
+      "cpu": "AMD Ryzen 5 7520U",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Panasonic",
+      "model_no": "Toughbook FZ-55",
+      "cpu": "i5-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "Thinkpad L570",
+      "cpu": "i7-7th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 3301",
+      "cpu": "i5-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Hp",
+      "model_no": "ENVY x360",
+      "cpu": "i7-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 7390 2-in-one",
+      "cpu": "i7-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "XPS",
+      "cpu": "i7-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 5530",
+      "cpu": "i7-12th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "Lenovo ThinkBook 15 G2 ITL",
+      "cpu": "i7-11th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "Lenovo ThinkBook 15 IIL",
+      "cpu": "i5-10th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "Lenovo ThinkBook 16 G6 IRL",
+      "cpu": "i5-11th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Inspiron 15-5000",
+      "cpu": "i5-10th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 7420",
+      "cpu": "i5-11th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Elitebook 860 G9",
+      "cpu": "i5-11th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "HP",
+      "model_no": "Elitebook 850 G7",
+      "cpu": "i5-11th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 7400",
+      "cpu": "i7-8th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Panasonic",
+      "model_no": "ToughBook CF-54",
+      "cpu": "i5-7th Gen",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 500",
+      "cpu": "i5-8365U CPU @ 1.90GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 5300 2-in-1",
+      "cpu": "i7-8665U CPU @ 1.90GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 7390 2-in-1",
+      "cpu": "i7-8650U CPU @ 1.90GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "Thinkpad E16",
+      "cpu": "i5-1335U CPU @ 1.3GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Hp",
+      "model_no": "Hp Laptop 15",
+      "cpu": "I7-1065G7 CPU @ 1.30GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latitude 7370",
+      "cpu": "m5-6Y54 CPU @ 1.10GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Precision 5590",
+      "cpu": "i5-8350U CPU @ 1.70GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Precision 5580",
+      "cpu": "i5-6200U CPU @ 2.30GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Hp",
+      "model_no": "Hp Pavillion Laptop 15",
+      "cpu": "I7-1065G7 CPU @ 1.30GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latittude 5500",
+      "cpu": "i5-8365U CPU @ 1.60GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Hp",
+      "model_no": "Hp Laptop 17-by1xxx",
+      "cpu": "i3-8145U CPU @ 2.10GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "Latritude 5500",
+      "cpu": "i7-8665U CPU @ 1.90GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "Thinkpad L590",
+      "cpu": "i5-8365U CPU @ 1.60GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Lenovo",
+      "model_no": "Thinkpad L580",
+      "cpu": "i5-8265U CPU @ 1.60GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Hp",
+      "model_no": "Elite x2 1012 G2",
+      "cpu": "i7-7600U CPU @ 2.80GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    },
+    {
+      "manufacturer": "Dell",
+      "model_no": "XPS 13 9300",
+      "cpu": "i5-1035G1 CPU @ 1.20GHz",
+      "ram": "8 GB",
+      "alt_names": []
+    }
+  ]
+}

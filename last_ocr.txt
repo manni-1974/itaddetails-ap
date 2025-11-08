@@ -1,0 +1,707 @@
+IMAGE: 20251104_153701_20251104_153613_image.jpg
+BEST: raw|--oem 3 --psm 11
+TEXT:
+ne
+~
+a,
+a,
+a
+&
+tae
+Gos %.
+S
+eg
+we
+al
+W
+~ %
+<i
+ul
+* mY Ka
+~
+hea
+ws
+N
+4
+NE,
+~~
+i
+y
+a
+ka
+i I
+aS
+na
+as
+i
+Me
+~_
++
+$n
+aS
+‘
+et
+2
+ft
+Oy
+ae S
+-
+es
+eas
+&
++-7
+ss
+a 3
+ae
+ets
+te
+<=
+a “Se a el
+Th.
+a)
+”
+<
+~
+°
+bl
+bes
+Wey
+wre
+‘%
+Bes
+baa
+*
+wit
+; %
+-
+pve La se
+ge eo <
+ST
+7
+re
+=
+. *
+aa aed
+="
+S
+¥
+BS
+ey
+~~
+i”
+fn FX
+ae
+“ss
+-~*
+Ne
+ile ols
+TS eagle,
+‘eh ©
+ote
+Sebhacl
+oe
+Be)
+a
+es
+=,
+skh
+be
+te
+e_-
+*
+©)
+or
+are pn
+ae
+me a
+‘ &
+Sie
+—=
+4
+eis
+a
+4
+t
+=e
+at ae
+tae
+Ss
+ries
+oa
+ome
+ad
+f
+2
+Y
+Pe
+xt.
++.
+*
+ae
+—
+=<
+a ee
+be
+I ae
+a
+ae
+ree
+et
+4
+‘3
+=
+*
+SNe e
+~
+“~*
+&
+ar
+ww oe
+re
+ae
+we
+ge
+4 it
+se
+om
+2 =
+oe
+eA
+1
+ae
+ss
+ad
+QQ
+Ty
+ey S of
+rh &
+as
+ay
+é.
+ea
+ce tie eal
+”
+™
+=
+id
+nike
+te
+«!
+cy
+,
+x
+3
+Yad
+ote
+ne
+—
+— -%
+a
+stn
+teary
+>
+Pe
+ie
+oie FS
+ne aig
+Pave
+A, I
+<
+Se
+~s
+i
+———
+SOG.
+ee
++
++e? ee
+he
+3
+~~ es
+ie
+7 oe.
+=e
+Ye
+a,
+¥
++
+Say
+ae.
+meee
+is,
+ty
+*
+“ee
+wa
++,
+Praek =
+=
+a
+~~
+p< *
+No
+Fe
+a
+ats
+=
+a
+i
+eho g
+&
+sett
+* a= .
+——.
+as,
+——
+Sy
+Poul
+al
+shee
+cs 3 es
+at
+a pee Fe
+ed
+=-
+© wx
+are
+aut
+‘ee
+Dae
+a
+> Pes
+es
+4
+ea awe
+ae
+ee
+ail
+i
+=
+=
+—*
+e
+par ey
+oe ear
+fo
+me
+=
+oy
+altel
+aa pes
+on eae
+=<
+— a“
+=>
+—
+ed
+S4
+—
+pate
+——_
+=e
+ay
+— os
+=
+_——
+*
+a,
+=a
+re
+i=
+—
+~~
+~~. =
+~~
+a
+~
+av a
+aT
+
+ATTEMPTS:
+[raw | --oem 3 --psm 6] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='SAE ON CAAA
+¢ “as i , “ ¥ SSE, . " be ees !
+: AS. Roe a eo 2 a s bs ~ Se ee % : "
+a ee Soe » x aS x 4 woe SS, wa. . ay - + Wty
+Sos ee SS aA SOS A
+A - ; a = . ~ ae a% Ve a ie, & HESS wi weg US
+~, "ae ....'
+[raw | --oem 3 --psm 7] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='...'
+[raw | --oem 3 --psm 11] score=1 manu='' model='' serial='e' st='' esc='' pno='' TEXT='ne
+~
+a,
+a,
+a
+&
+tae
+Gos %.
+S
+eg
+we
+al
+W
+~ %
+<i
+ul
+* mY Ka
+~
+hea
+ws
+N
+4
+NE,
+~~
+i
+y
+a
+ka
+i I
+aS
+na
+as
+i
+Me
+~_
++
+$n
+aS
+‘
+et
+2
+ft
+Oy
+ae S
+-
+es
+eas
+&
++-7
+ss
+a 3
+ae
+ets
+te
+<=
+a “Se a el
+Th.
+a)
+”
+<
+~
+°
+bl
+bes...'
+[raw | --oem 1 --psm 6] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='SAE ON CAAA
+¢ “as i , “ ¥ SSE, . " be ees !
+: AS. Roe a eo 2 a s bs ~ Se ee % : "
+a ee Soe » x aS x 4 woe SS, wa. . ay - + Wty
+Sos ee SS aA SOS A
+A - ; a = . ~ ae a% Ve a ie, & HESS wi weg US
+~, "ae ....'
+[inverted_contrast_upscale | --oem 3 --psm 6] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='. F %
+>! a . ® ~
+na a " %. = > “a
+a + . . . " > Px Ps “\
+= OP SSA > SAS
+at. * . Se Pa a ' 7 A bs - “ * Ss ‘ Ay ®
+se % a et ‘te ' tg a. _ b's a) e N, : ‘ “me, ve 4 a
+J bm pn -* i y . i 1 / x * «
+Sa ’ a...'
+[inverted_contrast_upscale | --oem 3 --psm 7] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='...'
+[inverted_contrast_upscale | --oem 3 --psm 11] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='%
+%
+i,
+en
+z
+~N
+i
+~,
+Og
+%
+tA,
+ee
+_
+» ’
+~R
+_
+ts
+R
+>.
+¥
+os
+ee
+~~
+oe, & i
+ay
+=.
+bs cd
+>
+\=
+ad
+SS
+hs
+Sect
+wy
+~
+7 >
+aD
+uw
+hee
+fy
+. *
+oe «
+ak
+‘ _ > Tae
+ee
+so
+A;
+.
+by YEN
+7. a ae
+Sane Shp
+_ a. oS’
+iat
+“wes
+“ ...'
+[inverted_contrast_upscale | --oem 1 --psm 6] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='. F %
+>! a . ® ~
+na a " %. = > “a
+a + . . . " > Px Ps “\
+= OP SSA > SAS
+at. * . Se Pa a ' 7 A bs - “ * Ss ‘ Ay ®
+se % a et ‘te ' tg a. _ b's a) e N, : ‘ “me, ve 4 a
+J bm pn -* i y . i 1 / x * «
+Sa ’ a...'
+[bw_140 | --oem 3 --psm 6] score=1 manu='' model='' serial='ES' st='' esc='' pno='' TEXT=', . . 4 ‘
+. as ; : wOON -
+@y . ; i iN ‘
+Rare ‘s rs ie) *e _ q . aa - . , * q an
+a aa > Se. os “. 54, P4 a > he ated 4 es . 7 e q. ie I
+SRE SRK ae hd ge
+. A wg RE ty :
+. . a e. he ~ & KN - YY a ; ; t ?...'
+[bw_140 | --oem 3 --psm 7] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='‘...'
+[bw_140 | --oem 3 --psm 11] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='"AN
+ny
+NER wf 4
+<a
+vA
+‘on
+Re
+Da Dd
+oa
+ae:
+\% *
+oy :
+4 AR
+%
+%.
+oy
+‘Pe
+‘e
+»
++s %-
+Net
+\.
+“ag
+NON
+“we
+he
+u
+t, *
+Ne
+.*
+. 4
+“we
+*
+~. *
+w
+~~
+wy
+~*~
+4
+Ja.
+>
+‘'
+™
+a
+~
+a
+aA
+a, g
+a
+aon Hye
+wa
+Pa
+~
+“y
+wre
+AD I
+....'
+[bw_140 | --oem 1 --psm 6] score=1 manu='' model='' serial='ES' st='' esc='' pno='' TEXT=', . . 4 ‘
+. as ; : wOON -
+@y . ; i iN ‘
+Rare ‘s rs ie) *e _ q . aa - . , * q an
+a aa > Se. os “. 54, P4 a > he ated 4 es . 7 e q. ie I
+SRE SRK ae hd ge
+. A wg RE ty :
+. . a e. he ~ & KN - YY a ; ; t ?...'
+[bw_170 | --oem 3 --psm 6] score=1 manu='' model='' serial='S' st='' esc='' pno='' TEXT='1 ~- x a x
+~ x. . . .
+. . ‘ .
+va ears a . ‘Oe 7 . ; : te, . — % .
+a ' cxh. Ap ,%, 4 a ete . . 28
+. . . ~: iM - 4 3 < *
+. eer oe “nny, “ORe* "his ~ TE. a
+7 Prades — ; a + ay o “2 A , ~, ~. >» : . e
+bar...'
+[bw_170 | --oem 3 --psm 7] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='...'
+[bw_170 | --oem 3 --psm 11] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='44
+rs
+we
+_
+-
+.
+,
+-
+64
+~
+x,
+ri
+wot
+*
+Nwetg “¢
+%.
+ane
+he
+Ld
+x4
+‘’
+aan
+oth
+<\
+SP Gr
+ve
+Sate
+yf
+at
+a)
+ont
+4
+<
+hy
+he a
+yt
+“QQ
+rT oo
+*
+A
+ro,
+3D
+yy
+of
+ve /
+oo
++b.
+ats.
+4
+ro
+a *
+¢°¢
+7?
+*
+oy
+wn. SOD >.
+t.
+Lz]
+...'
+[bw_170 | --oem 1 --psm 6] score=1 manu='' model='' serial='S' st='' esc='' pno='' TEXT='1 ~- x a x
+~ x. . . .
+. . ‘ .
+va ears a . ‘Oe 7 . ; : te, . — % .
+a ' cxh. Ap ,%, 4 a ete . . 28
+. . . ~: iM - 4 3 < *
+. eer oe “nny, “ORe* "his ~ TE. a
+7 Prades — ; a + ay o “2 A , ~, ~. >» : . e
+bar...'
+[bw_200 | --oem 3 --psm 6] score=1 manu='' model='' serial='ae' st='' esc='' pno='' TEXT=': e
+1 *: : . . ‘
+y aan oo : cw .
+bi yy am a
+’ “- hah, 5 a Yank, pi
+: ‘. ‘ en . 4k a
+4 oe. ., toes a ; rr oe ,
+ye. vy. ass . ~ Lot . : .
++e ans ge. tea Teas op y oy ,
+\ +: peg ee 1: : rn +. e .
+by. “Se...'
+[bw_200 | --oem 3 --psm 7] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='...'
+[bw_200 | --oem 3 --psm 11] score=0 manu='' model='' serial='' st='' esc='' pno='' TEXT='2
+.
+>
+hah, 5
+.
+on
+4%
+oe.
+aw
++.
+=~
+ee»
+Ss
+are
+"s
+i \
+‘au fees
+oo
+p erg as
+me N
++”
+a l
+aN
+tak
+a
+Ye
+~*
+--
+8
+we ot
+te
+&
+~~
+~
+ce
+©
+~~
+oy
+Pal
+wv.
+wa-%
+“
+a!
+‘2
+ee’
+oe
+~%
+ow
+¥
+re
+“S,.
+~~
+.
+cy
+ay
+*
+Ye
+al
+vw th...'
+[bw_200 | --oem 1 --psm 6] score=1 manu='' model='' serial='ae' st='' esc='' pno='' TEXT=': e
+1 *: : . . ‘
+y aan oo : cw .
+bi yy am a
+’ “- hah, 5 a Yank, pi
+: ‘. ‘ en . 4k a
+4 oe. ., toes a ; rr oe ,
+ye. vy. ass . ~ Lot . : .
++e ans ge. tea Teas op y oy ,
+\ +: peg ee 1: : rn +. e .
+by. “Se...'

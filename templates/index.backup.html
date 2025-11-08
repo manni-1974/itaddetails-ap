@@ -1,0 +1,389 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Manufacturing Label Intake</title>
+<style>
+  :root{ --box:160px; }
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:20px;background:#0b0f17;color:#e9eef7}
+  h2{margin:0 0 6px}
+  .small{color:#9fb0c7;font-size:13px;margin:6px 0 14px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+  .card{background:#0f1522;border:1px solid #1b2740;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+  .picker{display:flex;flex-direction:column;gap:8px}
+  .box{width:var(--box);height:var(--box);border:2px dashed #334a78;border-radius:10px;background:#0b1220;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
+  .box .ph{color:#7f95b5;font-size:13px}
+  .box img{max-width:100%;max-height:100%;object-fit:contain}
+  .fileInput{position:absolute;inset:0;opacity:0;cursor:pointer}
+  input[type="text"]{background:#0b1220;border:1px solid #334a78;border-radius:8px;padding:10px 12px;color:#e9eef7;width:240px}
+  button{padding:10px 14px;border-radius:8px;border:1px solid #3b5cb3;background:#0b1220;color:#e9eef7;cursor:pointer;transition:opacity .15s ease, transform .06s ease}
+  button:hover{transform:translateY(-1px)}
+  button.primary{background:#2356ff;border-color:#2356ff;color:#fff}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  table{width:100%;border-collapse:collapse;margin-top:14px;background:#0f1522}
+  th,td{border:1px solid #1b2740;padding:8px 10px;text-align:left;font-size:14px}
+  th{background:#10192d}
+  .hint{font-size:12px;color:#9fb0c7;margin-top:6px}
+  .ok{color:#22c55e}
+  .err{color:#f87171}
+  pre{white-space:pre-wrap;background:#0f1522;padding:12px;border-radius:8px;border:1px solid #1b2740}
+  .stack{display:flex;flex-direction:column;gap:8px}
+  .tag{display:inline-block;padding:4px 8px;border-radius:999px;font-size:12px;font-weight:600}
+  .tag.working{background:#17335a;color:#9ec5ff;border:1px solid #2a58a3}
+  .tag.fail{background:#3b0f12;color:#fecaca;border:1px solid #7f1d1d}
+  .tag.ready{background:#12321e;color:#bbf7d0;border:1px solid #14532d}
+  .row-ghost td{opacity:.7}
+
+  /* Editable cell input styling */
+  .cellInput{
+    width:100%;
+    background:#0b1220;
+    border:1px solid #334a78;
+    color:#e9eef7;
+    border-radius:6px;
+    padding:6px 8px;
+    font-size:14px;
+  }
+
+  /* Top actions row */
+  .actions{
+    display:flex;align-items:center;justify-content:space-between;margin-top:10px;margin-bottom:6px
+  }
+</style>
+</head>
+<body>
+  <h2>AI Manufacturing Label Intake (Photos + Service Tag → queued rows)</h2>
+  <div class="small">
+    A: <b>dark manufacturing/regulatory label</b>. B: <b>Service Tag sticker or keyboard side</b>.<br>
+    Enter the <b>7-char Service Tag</b> (e.g., HGQ5R73) to fetch model/CPU/RAM.
+  </div>
+
+  <div class="row" id="controlsRow">
+    <div class="card picker">
+      <div style="font-weight:600">Photo A — Manufacturing Label</div>
+      <div class="box" id="boxA">
+        <span class="ph">Tap to add</span>
+        <input class="fileInput" type="file" id="fileA" accept="image/*">
+      </div>
+      <div class="hint">Fill frame; avoid glare; keep upright.</div>
+    </div>
+
+    <div class="card picker">
+      <div style="font-weight:600">Photo B — Tag / Keyboard</div>
+      <div class="box" id="boxB">
+        <span class="ph">Tap to add</span>
+        <input class="fileInput" type="file" id="fileB" accept="image/*">
+      </div>
+      <div class="hint">White ST/EX sticker or keyboard face.</div>
+    </div>
+
+    <div class="card stack" style="min-width:280px">
+      <div class="stack">
+        <label for="serialInput" style="font-size:13px;color:#9fb0c7">Service Tag (7 chars)</label>
+        <input id="serialInput" type="text" maxlength="7" placeholder="e.g., HGQ5R73" autocomplete="off">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <button id="resetBtn"   type="button">Reset</button>
+        <button id="analyzeBtn" type="button" class="primary">Analyze</button>
+      </div>
+      <div class="hint" id="statusMsg" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <div><a href="/upload-db" style="color:#9ec5ff;text-decoration:none">Upload</a></div>
+    <button id="downloadCsvBtn" type="button">Download CSV (current rows)</button>
+  </div>
+
+  <table id="outTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Manufacturer</th>
+        <th>Model</th>
+        <th>Serial</th>
+        <th>CPU</th>
+        <th>RAM</th>
+        <th>Status / Confirm</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <hr>
+  <h3>Recent (last 10 saved)</h3>
+  <pre>{{log}}</pre>
+
+<script>
+(function(){
+  function byId(id){ return document.getElementById(id); }
+  function normalizeST(v){ return (v||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,7); }
+  function setStatus(msg, isErr=false){
+    const s = byId('statusMsg'); if(!s) return;
+    s.textContent = msg || "";
+    s.className = "hint " + (isErr ? "err" : "ok");
+  }
+  function rebuildBox(boxId, inputId){
+    const box = byId(boxId);
+    while(box.firstChild){ box.removeChild(box.firstChild); }
+    const ph = document.createElement('span'); ph.className='ph'; ph.textContent='Tap to add';
+    const input = document.createElement('input');
+    input.className='fileInput'; input.type='file'; input.accept='image/*'; input.id = inputId;
+    box.appendChild(ph); box.appendChild(input);
+    input.addEventListener('change', ()=>{
+      const f = input.files && input.files[0];
+      const old = box.querySelector('img'); if(old) old.remove();
+      const phE = box.querySelector('.ph'); if(phE) phE.remove();
+      if(!f){
+        if(!box.querySelector('.ph')){ const s=document.createElement('span'); s.className='ph'; s.textContent='Tap to add'; box.prepend(s); }
+        return;
+      }
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(f);
+      img.onload = ()=> URL.revokeObjectURL(img.src);
+      box.appendChild(img);
+    });
+    return input;
+  }
+  function hardResetUI(){
+    rebuildBox('boxA','fileA');
+    rebuildBox('boxB','fileB');
+    const serial = byId('serialInput'); if (serial) serial.value = "";
+    setStatus("");
+    const ab = byId('analyzeBtn'); if(ab) ab.disabled = false;
+  }
+  function getFilesSafe(){
+    let fileA = byId('fileA'); if(!fileA) fileA = rebuildBox('boxA','fileA');
+    let fileB = byId('fileB'); if(!fileB) fileB = rebuildBox('boxB','fileB');
+    return { fileA, fileB };
+  }
+
+  // --- Row creation & live update ---
+  let rowCount = 0;
+
+  function makeStatusTag(kind, text){
+    const span = document.createElement('span');
+    span.className = 'tag ' + kind;
+    span.textContent = text;
+    return span;
+  }
+
+  function inputCell(value){
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'cellInput';
+    inp.value = value || '';
+    return inp;
+  }
+
+  function addPendingRow(serial){
+    rowCount += 1;
+    const tr = document.createElement('tr');
+    tr.className = 'row-ghost';
+
+    const tdIdx  = document.createElement('td'); tdIdx.textContent = rowCount;
+    const tdMfr  = document.createElement('td'); tdMfr.textContent = '';
+    const tdModel= document.createElement('td'); tdModel.textContent = '';
+    const tdSN   = document.createElement('td'); tdSN.textContent = serial || '';
+    const tdCPU  = document.createElement('td'); tdCPU.textContent = '';
+    const tdRAM  = document.createElement('td'); tdRAM.textContent = '';
+    const tdAct  = document.createElement('td');
+
+    const status = makeStatusTag('working','Analyzing…');
+    tdAct.appendChild(status);
+
+    tr.appendChild(tdIdx);
+    tr.appendChild(tdMfr);
+    tr.appendChild(tdModel);
+    tr.appendChild(tdSN);
+    tr.appendChild(tdCPU);
+    tr.appendChild(tdRAM);
+    tr.appendChild(tdAct);
+
+    byId('tbody').appendChild(tr);
+
+    return {
+      tr, tdIdx, tdMfr, tdModel, tdSN, tdCPU, tdRAM, tdAct,
+      setWorking(){ tdAct.innerHTML=''; tdAct.appendChild(makeStatusTag('working','Analyzing…')); tr.classList.add('row-ghost'); },
+      setReady(j){
+        tr.classList.remove('row-ghost');
+
+        // Replace text cells with editable inputs
+        tdMfr.innerHTML  = ''; const inpMfr   = inputCell(j.manufacturer || '');
+        tdModel.innerHTML= ''; const inpModel = inputCell((j.model_no || j.retail_model_guess || ''));
+        tdSN.innerHTML   = ''; const inpSN    = inputCell(j.serial || tdSN.textContent || '');
+        tdCPU.innerHTML  = ''; const inpCPU   = inputCell(j.cpu || '');
+        tdRAM.innerHTML  = ''; const inpRAM   = inputCell(j.ram || '');
+
+        tdMfr.appendChild(inpMfr);
+        tdModel.appendChild(inpModel);
+        tdSN.appendChild(inpSN);
+        tdCPU.appendChild(inpCPU);
+        tdRAM.appendChild(inpRAM);
+
+        tdAct.innerHTML     = '';
+        const btn = document.createElement('button');
+        btn.className = 'primary';
+        btn.textContent = 'Confirm';
+
+        btn.addEventListener('click', async ()=>{
+          try{
+            btn.disabled = true;
+
+            // Merge edited values into payload
+            const payload = Object.assign({}, j, {
+              manufacturer: inpMfr.value.trim(),
+              model_no:     inpModel.value.trim(),
+              serial:       (inpSN.value || '').trim().toUpperCase(),
+              cpu:          inpCPU.value.trim(),
+              ram:          inpRAM.value.trim()
+            });
+
+            const rr = await fetch('/confirm_row', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify(payload)
+            });
+            const jj = await rr.json().catch(()=> ({}));
+            if(!rr.ok){ btn.disabled = false; throw new Error((jj && (jj.detail||jj.error)) || `HTTP ${rr.status}`); }
+
+            tdAct.innerHTML = '';
+            tdAct.appendChild(makeStatusTag('ready','Saved'));
+            setStatus('Saved. You can keep adding laptops.');
+          }catch(e){
+            tdAct.innerHTML = '';
+            const fail = makeStatusTag('fail','Save failed');
+            tdAct.appendChild(fail);
+            const retry = document.createElement('button');
+            retry.style.marginLeft='8px';
+            retry.textContent='Retry Save';
+            retry.addEventListener('click', ()=> btn.click());
+            tdAct.appendChild(retry);
+          }
+        });
+        tdAct.appendChild(btn);
+      },
+      setFailed(message){
+        tr.classList.remove('row-ghost');
+        tdAct.innerHTML = '';
+        const fail = makeStatusTag('fail','Failed');
+        tdAct.appendChild(fail);
+        const msg = document.createElement('span');
+        msg.style.marginLeft='8px'; msg.style.fontSize='12px'; msg.style.opacity='.9';
+        msg.textContent = message || 'Analyze failed';
+        tdAct.appendChild(msg);
+      }
+    };
+  }
+
+  // --- CSV download (client-side, current rows only) ---
+  function tableToCSV(){
+    const tbody = byId('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const headers = ['#','Manufacturer','Model','Serial','CPU','RAM','Status'];
+    const data = [headers];
+
+    rows.forEach(tr=>{
+      const tds = tr.querySelectorAll('td');
+      if (tds.length < 7) return;
+
+      function val(td){
+        const inp = td.querySelector('input.cellInput');
+        if (inp) return inp.value;
+        return (td.textContent || '').trim();
+      }
+      const idx   = val(tds[0]);
+      const mfr   = val(tds[1]);
+      const model = val(tds[2]);
+      const sn    = val(tds[3]);
+      const cpu   = val(tds[4]);
+      const ram   = val(tds[5]);
+      const stat  = (tds[6].textContent || '').replace(/\s+/g,' ').trim();
+
+      data.push([idx,mfr,model,sn,cpu,ram,stat]);
+    });
+
+    const csv = data.map(row => row.map(cell=>{
+      const c = (cell ?? '').toString();
+      if (/[",\n]/.test(c)) return `"${c.replace(/"/g,'""')}"`;
+      return c;
+    }).join(',')).join('\n');
+
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().replace(/[:.]/g,'-');
+    a.href = url;
+    a.download = `scans_session_${ts}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    hardResetUI();
+
+    const analyzeBtn    = byId('analyzeBtn');
+    const resetBtn      = byId('resetBtn');
+    const serialEl      = byId('serialInput');
+    const downloadBtn   = byId('downloadCsvBtn');
+
+    serialEl.addEventListener('input', ()=> {
+      serialEl.value = normalizeST(serialEl.value);
+    });
+
+    resetBtn.addEventListener('click', hardResetUI);
+    downloadBtn.addEventListener('click', tableToCSV);
+
+    analyzeBtn.addEventListener('click', async () => {
+      try{
+        const { fileA, fileB } = getFilesSafe();
+        const st = normalizeST(serialEl.value);
+
+        // Keep your current validation: require ST and both photos
+        if (st.length !== 7){
+          setStatus("Enter a valid 7-char Service Tag before Analyze.", true);
+          return;
+        }
+        if(!(fileA.files && fileA.files[0]) || !(fileB.files && fileB.files[0])){
+          setStatus("Please add both photos before analyzing.", true);
+          return;
+        }
+
+        // Capture files before clearing the UI
+        const fa = fileA.files[0];
+        const fb = fileB.files[0];
+
+        // Create a row immediately (queued)
+        const row = addPendingRow(st);
+        row.setWorking();
+
+        // Clear UI so you can immediately prepare the next unit
+        hardResetUI();
+        setStatus("Queued. You can add the next laptop while this analyzes.");
+
+        // Build request with captured files
+        const fd = new FormData();
+        fd.append('fileA', fa);
+        fd.append('fileB', fb);
+        fd.append('manual_serial', st);
+
+        const r = await fetch('/analyze_pair', { method:'POST', body: fd });
+        const j = await r.json().catch(()=> ({}));
+        if(!r.ok){ throw new Error((j && (j.detail||j.error)) || `HTTP ${r.status}`); }
+
+        // Populate row when done (editable)
+        row.setReady(j);
+
+      }catch(e){
+        setStatus("Analyze failed: " + e.message, true);
+        // Add a failed row so you have a visible audit trail
+        const row = addPendingRow(byId('serialInput').value || '');
+        row.setFailed(e.message);
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Upload Model Database</title>
+<style>
+  :root{ --box:160px; }
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:20px;background:#0b0f17;color:#e9eef7}
+  h2{margin:0 0 6px}
+  .small{color:#9fb0c7;font-size:13px;margin:6px 0 14px}
+  .card{background:#0f1522;border:1px solid #1b2740;border-radius:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.4);max-width:720px}
+  input[type="file"]{display:block;margin-top:6px}
+  button{padding:10px 14px;border-radius:8px;border:1px solid #3b5cb3;background:#0b1220;color:#e9eef7;cursor:pointer;transition:opacity .15s ease, transform .06s ease}
+  button:hover{transform:translateY(-1px)}
+  button.primary{background:#2356ff;border-color:#2356ff;color:#fff}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  .hint{font-size:12px;color:#9fb0c7;margin-top:6px}
+  .ok{color:#22c55e}
+  .err{color:#f87171}
+  table{width:100%;border-collapse:collapse;margin-top:14px;background:#0f1522}
+  th,td{border:1px solid #1b2740;padding:8px 10px;text-align:left;font-size:14px}
+  th{background:#10192d}
+  a{color:#9ec5ff;text-decoration:none}
+  a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+  <h2>Upload Model Database (Backup Source)</h2>
+  <div class="small">
+    Upload an <b>Excel (.xlsx)</b> or <b>CSV</b> with columns like:
+    <code>manufacturer</code>, <code>model</code>/<code>model_no</code>, <code>cpu</code>, <code>ram</code>, optional <code>alt_names</code> (comma-separated).<br>
+    Data is normalized, de-duplicated by (manufacturer, model_no), and saved to <b>data/models_db.json</b>.
+  </div>
+
+  <div class="card">
+    <form id="upForm">
+      <label>Choose file:</label>
+      <input type="file" id="file" name="file" accept=".xlsx,.csv" required>
+      <div class="hint">Excel first sheet is used. CSV must include a header row.</div>
+      <div style="margin-top:12px;display:flex;gap:10px">
+        <button type="submit" class="primary">Upload & Build JSON</button>
+        <a href="/" style="align-self:center">← Back to Intake</a>
+      </div>
+      <div id="status" class="hint" style="margin-top:10px"></div>
+    </form>
+  </div>
+
+  <div id="resultWrap" style="display:none;margin-top:16px">
+    <table>
+      <thead><tr><th>Result</th><th>Value</th></tr></thead>
+      <tbody id="resBody"></tbody>
+    </table>
+  </div>
+
+<script>
+(function(){
+  const form = document.getElementById('upForm');
+  const status = document.getElementById('status');
+  const wrap = document.getElementById('resultWrap');
+  const body = document.getElementById('resBody');
+
+  function setStatus(msg, ok){
+    status.textContent = msg;
+    status.className = "hint " + (ok ? "ok" : "err");
+  }
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const file = document.getElementById('file').files[0];
+    if(!file){ setStatus('Choose a file first.', false); return; }
+    setStatus('Uploading… building JSON…', true);
+
+    const fd = new FormData();
+    fd.append('file', file);
+
+    const r = await fetch('/upload-db', { method:'POST', body: fd });
+    const j = await r.json().catch(()=> ({}));
+
+    if(!r.ok){ setStatus((j.detail || j.error || ('HTTP '+r.status)), false); return; }
+
+    setStatus('OK — database updated.', true);
+    wrap.style.display = '';
+    body.innerHTML = '';
+    const rows = [
+      ['Saved to', j.path || 'data/models_db.json'],
+      ['Records', j.count || 0],
+      ['Backed up previous', j.backup || '(none)']
+    ];
+    rows.forEach(([k,v])=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${k}</td><td>${v}</td>`;
+      body.appendChild(tr);
+    });
+  });
+})();
+</script>
+</body>
+</html>
