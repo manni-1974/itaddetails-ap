@@ -120,16 +120,12 @@
 <script>
 (function(){
   function byId(id){ return document.getElementById(id); }
-
-  // NEW: accept any length (letters/digits), uppercase, NO truncation
   function normalizeSerial(v){ return (v||"").toUpperCase().replace(/[^A-Z0-9]/g,""); }
-
   function setStatus(msg, isErr=false){
     const s = byId('statusMsg'); if(!s) return;
     s.textContent = msg || "";
     s.className = "hint " + (isErr ? "err" : "ok");
   }
-
   function rebuildBox(boxId, inputId){
     const box = byId(boxId);
     while(box.firstChild){ box.removeChild(box.firstChild); }
@@ -152,7 +148,6 @@
     });
     return input;
   }
-
   function hardResetUI(){
     rebuildBox('boxA','fileA');
     rebuildBox('boxB','fileB');
@@ -160,14 +155,12 @@
     setStatus("");
     const ab = byId('analyzeBtn'); if(ab) ab.disabled = false;
   }
-
   function getFilesSafe(){
     let fileA = byId('fileA'); if(!fileA) fileA = rebuildBox('boxA','fileA');
     let fileB = byId('fileB'); if(!fileB) fileB = rebuildBox('boxB','fileB');
     return { fileA, fileB };
   }
 
-  // --- Row creation & live update ---
   let rowCount = 0;
 
   function makeStatusTag(kind, text){
@@ -217,7 +210,6 @@
       setReady(j){
         tr.classList.remove('row-ghost');
 
-        // Replace text cells with editable inputs
         tdMfr.innerHTML  = ''; const inpMfr   = inputCell(j.manufacturer || '');
         tdModel.innerHTML= ''; const inpModel = inputCell((j.model_no || j.retail_model_guess || ''));
         tdSN.innerHTML   = ''; const inpSN    = inputCell(j.serial || tdSN.textContent || '');
@@ -238,8 +230,6 @@
         btn.addEventListener('click', async ()=>{
           try{
             btn.disabled = true;
-
-            // Merge edited values into payload
             const payload = Object.assign({}, j, {
               manufacturer: inpMfr.value.trim(),
               model_no:     inpModel.value.trim(),
@@ -247,15 +237,13 @@
               cpu:          inpCPU.value.trim(),
               ram:          inpRAM.value.trim()
             });
-
             const rr = await fetch('/confirm_row', {
               method:'POST',
               headers:{'Content-Type':'application/json'},
               body: JSON.stringify(payload)
             });
             const jj = await rr.json().catch(()=> ({}));
-            if(!rr.ok){ btn.disabled = false; throw new Error((jj && (jj.detail||jj.error)) || `HTTP ${rr.status}`); }
-
+            if(!rr.ok){ btn.disabled = False; throw new Error((jj && (jj.detail||jj.error)) || `HTTP ${rr.status}`); }
             tdAct.innerHTML = '';
             tdAct.appendChild(makeStatusTag('ready','Saved'));
             setStatus('Saved. You can keep adding laptops.');
@@ -285,7 +273,6 @@
     };
   }
 
-  // --- CSV download (client-side, current rows only) ---
   function tableToCSV(){
     const tbody = byId('tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
@@ -295,7 +282,6 @@
     rows.forEach(tr=>{
       const tds = tr.querySelectorAll('td');
       if (tds.length < 7) return;
-
       function val(td){
         const inp = td.querySelector('input.cellInput');
         if (inp) return inp.value;
@@ -308,7 +294,6 @@
       const cpu   = val(tds[4]);
       const ram   = val(tds[5]);
       const stat  = (tds[6].textContent || '').replace(/\s+/g,' ').trim();
-
       data.push([idx,mfr,model,sn,cpu,ram,stat]);
     });
 
@@ -331,13 +316,11 @@
 
   window.addEventListener('DOMContentLoaded', () => {
     hardResetUI();
-
     const analyzeBtn    = byId('analyzeBtn');
     const resetBtn      = byId('resetBtn');
     const serialEl      = byId('serialInput');
     const downloadBtn   = byId('downloadCsvBtn');
 
-    // Keep input clean, but do NOT truncate
     serialEl.addEventListener('input', ()=>{
       serialEl.value = normalizeSerial(serialEl.value);
     });
@@ -350,7 +333,6 @@
         const { fileA, fileB } = getFilesSafe();
         const st = normalizeSerial(serialEl.value);
 
-        // Require both photos (vision is your base truth)
         if(!(fileA.files && fileA.files[0]) || !(fileB.files && fileB.files[0])){
           setStatus("Please add both photos before analyzing.", true);
           return;
@@ -362,11 +344,9 @@
         const row = addPendingRow(st);
         row.setWorking();
 
-        // Clear UI so you can immediately prepare the next unit
         hardResetUI();
         setStatus("Queued. You can add the next laptop while this analyzes.");
 
-        // Build request
         const fd = new FormData();
         fd.append('fileA', fa);
         fd.append('fileB', fb);
