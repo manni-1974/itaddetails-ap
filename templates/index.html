@@ -42,9 +42,7 @@
     padding:6px 8px;
     font-size:14px;
   }
-  .actions{
-    display:flex;align-items:center;justify-content:space-between;margin-top:10px;margin-bottom:6px
-  }
+  .actions{display:flex;align-items:center;justify-content:space-between;margin-top:10px;margin-bottom:6px}
   .linkbtn{padding:10px 14px;border-radius:8px;border:1px solid #3b5cb3;background:#0b1220;color:#e9eef7;cursor:pointer;text-decoration:none;display:inline-block}
   .linkbtn:hover{transform:translateY(-1px)}
 </style>
@@ -52,13 +50,12 @@
 <body>
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
     <div>
-      <h2>AI Manufacturing Label Intake (Photos + Service Tag → queued rows)</h2>
+      <h2>AI Manufacturing Label Intake (Photos + Serial/Service Tag → queued rows)</h2>
       <div class="small">
         A: <b>dark manufacturing/regulatory label</b>. B: <b>Service Tag sticker or keyboard side</b>.<br>
-        Enter the <b>7-char Service Tag</b> (e.g., HGQ5R73) to fetch model/CPU/RAM.
+        Enter the unit’s <b>Serial / Service Tag</b> (Dell = 7 chars; Lenovo/HP may be longer).
       </div>
     </div>
-    <!-- NEW: link to Upload DB page -->
     <div><a class="linkbtn" href="/upload-db">Upload DB</a></div>
   </div>
 
@@ -83,8 +80,8 @@
 
     <div class="card stack" style="min-width:280px">
       <div class="stack">
-        <label for="serialInput" style="font-size:13px;color:#9fb0c7">Service Tag (7 chars)</label>
-        <input id="serialInput" type="text" maxlength="7" placeholder="e.g., HGQ5R73" autocomplete="off">
+        <label for="serialInput" style="font-size:13px;color:#9fb0c7">Serial / Service Tag</label>
+        <input id="serialInput" type="text" maxlength="30" placeholder="e.g., HGQ5R73 or R90XXXXXXXX" autocomplete="off">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
         <button id="resetBtn"   type="button">Reset</button>
@@ -121,7 +118,10 @@
 <script>
 (function(){
   function byId(id){ return document.getElementById(id); }
-  function normalizeST(v){ return (v||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,7); }
+  function normalizeSerial(v){
+    // Uppercase, strip spaces, allow A–Z, 0–9, hyphen. (No 7-char clamp.)
+    return (v||"").toUpperCase().replace(/\s+/g,"").replace(/[^A-Z0-9\-]/g,"");
+  }
   function setStatus(msg, isErr=false){
     const s = byId('statusMsg'); if(!s) return;
     s.textContent = msg || "";
@@ -212,7 +212,6 @@
       setReady(j){
         tr.classList.remove('row-ghost');
 
-        // Replace text cells with editable inputs
         tdMfr.innerHTML  = ''; const inpMfr   = inputCell(j.manufacturer || '');
         tdModel.innerHTML= ''; const inpModel = inputCell((j.model_no || j.retail_model_guess || ''));
         tdSN.innerHTML   = ''; const inpSN    = inputCell(j.serial || tdSN.textContent || '');
@@ -233,8 +232,6 @@
         btn.addEventListener('click', async ()=>{
           try{
             btn.disabled = true;
-
-            // Merge edited values into payload
             const payload = Object.assign({}, j, {
               manufacturer: inpMfr.value.trim(),
               model_no:     inpModel.value.trim(),
@@ -332,8 +329,8 @@
     const serialEl      = byId('serialInput');
     const downloadBtn   = byId('downloadCsvBtn');
 
-    serialEl.addEventListener('input', ()=> {
-      serialEl.value = normalizeST(serialEl.value);
+    serialEl.addEventListener('input', ()=>{
+      serialEl.value = normalizeSerial(serialEl.value);
     });
 
     resetBtn.addEventListener('click', hardResetUI);
@@ -342,11 +339,11 @@
     analyzeBtn.addEventListener('click', async () => {
       try{
         const { fileA, fileB } = getFilesSafe();
-        const st = normalizeST(serialEl.value);
+        const st = normalizeSerial(serialEl.value);
 
-        // Keep your current validation: require ST and both photos
-        if (st.length !== 7){
-          setStatus("Enter a valid 7-char Service Tag before Analyze.", true);
+        // New validation: allow Lenovo/HP (≥5) and Dell (7 is fine).
+        if (st.length < 5){
+          setStatus("Enter a valid serial/service tag (≥ 5 characters) before Analyze.", true);
           return;
         }
         if(!(fileA.files && fileA.files[0]) || !(fileB.files && fileB.files[0])){
@@ -354,19 +351,15 @@
           return;
         }
 
-        // Capture files before clearing the UI
         const fa = fileA.files[0];
         const fb = fileB.files[0];
 
-        // Create a row immediately (queued)
         const row = addPendingRow(st);
         row.setWorking();
 
-        // Clear UI so you can immediately prepare the next unit
         hardResetUI();
         setStatus("Queued. You can add the next laptop while this analyzes.");
 
-        // Build request with captured files
         const fd = new FormData();
         fd.append('fileA', fa);
         fd.append('fileB', fb);
@@ -376,11 +369,9 @@
         const j = await r.json().catch(()=> ({}));
         if(!r.ok){ throw new Error((j && (j.detail||j.error)) || `HTTP ${r.status}`); }
 
-        // Populate row when done (editable)
         row.setReady(j);
       }catch(e){
         setStatus("Analyze failed: " + e.message, true);
-        // Add a failed row so you have a visible audit trail
         const row = addPendingRow(byId('serialInput').value || '');
         row.setFailed(e.message);
       }
