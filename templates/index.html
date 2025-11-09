@@ -47,8 +47,6 @@
   }
   .linkbtn{padding:10px 14px;border-radius:8px;border:1px solid #3b5cb3;background:#0b1220;color:#e9eef7;cursor:pointer;text-decoration:none;display:inline-block}
   .linkbtn:hover{transform:translateY(-1px)}
-
-  /* NEW: red delete "X" button */
   .delbtn{
     display:inline-flex;align-items:center;justify-content:center;
     width:22px;height:22px;min-width:22px;
@@ -57,20 +55,18 @@
     user-select:none;
   }
   .delbtn:hover{ transform:translateY(-1px); }
-  .rownum{
-    display:inline-block;min-width:16px;text-align:right;
-  }
-  /* Keep first column compact */
+  .rownum{ display:inline-block;min-width:16px;text-align:right; }
   td.idxcol{white-space:nowrap}
+  .inlineFlex{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 </style>
 </head>
 <body>
   <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
     <div>
-      <h2>AI Manufacturing Label Intake (Photos + Serial/Tag → queued rows)</h2>
+      <h2>AI Manufacturing Label Intake (Two Tag Photos → Row)</h2>
       <div class="small">
-        A: <b>dark manufacturing/regulatory label</b>. B: <b>Service Tag sticker or keyboard side</b>.<br>
-        Enter the device <b>Serial / Tag</b> (Dell 7-char Service Tag, or Lenovo/HP serial, etc.).
+        Provide TWO photos of manufacturing/service tags (dark label + white sticker).
+        The AI reads SN/Service Tag and uses OEM APIs. If unreadable, the row is blank and you can click <b>Add Serial No.</b>.
       </div>
     </div>
     <div><a class="linkbtn" href="/upload-db">Upload DB</a></div>
@@ -78,27 +74,27 @@
 
   <div class="row" id="controlsRow">
     <div class="card picker">
-      <div style="font-weight:600">Photo A — Manufacturing Label</div>
+      <div style="font-weight:600">Photo A — Tag / Label</div>
       <div class="box" id="boxA">
         <span class="ph">Tap to add</span>
         <input class="fileInput" type="file" id="fileA" accept="image/*">
       </div>
-      <div class="hint">Fill frame; avoid glare; keep upright.</div>
+      <div class="hint">Dark manufacturing label (bottom cover) preferred.</div>
     </div>
 
     <div class="card picker">
-      <div style="font-weight:600">Photo B — Tag / Keyboard</div>
+      <div style="font-weight:600">Photo B — Tag / Label</div>
       <div class="box" id="boxB">
         <span class="ph">Tap to add</span>
         <input class="fileInput" type="file" id="fileB" accept="image/*">
       </div>
-      <div class="hint">White ST/EX sticker or keyboard face.</div>
+      <div class="hint">White service/serial sticker if present.</div>
     </div>
 
     <div class="card stack" style="min-width:280px">
       <div class="stack">
-        <label for="serialInput" style="font-size:13px;color:#9fb0c7">Serial / Tag</label>
-        <input id="serialInput" type="text" placeholder="e.g., PF0UU8Y9 or HGQ5R73" autocomplete="off">
+        <label for="orderInput" style="font-size:13px;color:#9fb0c7">Order No. (sticky)</label>
+        <input id="orderInput" type="text" placeholder="e.g., 2025-IF-Ohio-Load-7" autocomplete="off">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
         <button id="resetBtn"   type="button">Reset</button>
@@ -117,12 +113,13 @@
     <thead>
       <tr>
         <th>#</th>
+        <th>Order No.</th>
         <th>Manufacturer</th>
         <th>Model</th>
         <th>Serial</th>
         <th>CPU</th>
         <th>RAM</th>
-        <th>Status / Confirm</th>
+        <th>Status / Actions</th>
       </tr>
     </thead>
     <tbody id="tbody"></tbody>
@@ -166,7 +163,6 @@
   function hardResetUI(){
     rebuildBox('boxA','fileA');
     rebuildBox('boxB','fileB');
-    const serial = byId('serialInput'); if (serial) serial.value = "";
     setStatus("");
     const ab = byId('analyzeBtn'); if(ab) ab.disabled = false;
   }
@@ -185,11 +181,12 @@
     return span;
   }
 
-  function inputCell(value){
+  function inputCell(value, placeholder){
     const inp = document.createElement('input');
     inp.type = 'text';
     inp.className = 'cellInput';
     inp.value = value || '';
+    if (placeholder) inp.placeholder = placeholder;
     return inp;
   }
 
@@ -216,7 +213,7 @@
     return btn;
   }
 
-  function addPendingRow(serial){
+  function addPendingRow(orderNo){
     rowCount += 1;
     const tr = document.createElement('tr');
     tr.className = 'row-ghost';
@@ -228,9 +225,10 @@
     tdIdx.appendChild(del);
     tdIdx.appendChild(numSpan);
 
+    const tdOrder= document.createElement('td'); tdOrder.textContent = orderNo || '';
     const tdMfr  = document.createElement('td'); tdMfr.textContent = '';
     const tdModel= document.createElement('td'); tdModel.textContent = '';
-    const tdSN   = document.createElement('td'); tdSN.textContent = serial || '';
+    const tdSN   = document.createElement('td'); tdSN.textContent = '';
     const tdCPU  = document.createElement('td'); tdCPU.textContent = '';
     const tdRAM  = document.createElement('td'); tdRAM.textContent = '';
     const tdAct  = document.createElement('td');
@@ -239,6 +237,7 @@
     tdAct.appendChild(status);
 
     tr.appendChild(tdIdx);
+    tr.appendChild(tdOrder);
     tr.appendChild(tdMfr);
     tr.appendChild(tdModel);
     tr.appendChild(tdSN);
@@ -249,16 +248,18 @@
     byId('tbody').appendChild(tr);
 
     return {
-      tr, tdIdx, tdMfr, tdModel, tdSN, tdCPU, tdRAM, tdAct,
+      tr, tdIdx, tdOrder, tdMfr, tdModel, tdSN, tdCPU, tdRAM, tdAct,
       setWorking(){
         tdAct.innerHTML=''; tdAct.appendChild(makeStatusTag('working','Analyzing…')); tr.classList.add('row-ghost');
       },
       setReady(j){
         tr.classList.remove('row-ghost');
 
+        tdOrder.textContent = j.order_no || tdOrder.textContent || '';
+
         tdMfr.innerHTML  = ''; const inpMfr   = inputCell(j.manufacturer || '');
         tdModel.innerHTML= ''; const inpModel = inputCell((j.model_no || j.retail_model_guess || ''));
-        tdSN.innerHTML   = ''; const inpSN    = inputCell(j.serial || tdSN.textContent || '');
+        tdSN.innerHTML   = ''; const inpSN    = inputCell(j.serial || '', 'Serial / Service Tag');
         tdCPU.innerHTML  = ''; const inpCPU   = inputCell(j.cpu || '');
         tdRAM.innerHTML  = ''; const inpRAM   = inputCell(j.ram || '');
 
@@ -276,13 +277,24 @@
         btn.addEventListener('click', async ()=>{
           try{
             btn.disabled = true;
-            const payload = Object.assign({}, j, {
+            const payload = {
+              time: j.time,
+              order_no: tdOrder.textContent || '',
+              file_a: j.file_a, file_b: j.file_b,
               manufacturer: inpMfr.value.trim(),
               model_no:     inpModel.value.trim(),
               serial:       (inpSN.value || '').trim().toUpperCase(),
               cpu:          inpCPU.value.trim(),
-              ram:          inpRAM.value.trim()
-            });
+              ram:          inpRAM.value.trim(),
+              product_no:   j.product_no || '',
+              reg_model:    j.reg_model || '',
+              reg_type:     j.reg_type || '',
+              dpn:          j.dpn || '',
+              input_power:  j.input_power || '',
+              retail_model_guess: j.retail_model_guess || '',
+              notes:        j.notes || '',
+              raw_json:     j.raw_json || ''
+            };
             const rr = await fetch('/confirm_row', {
               method:'POST',
               headers:{'Content-Type':'application/json'},
@@ -306,6 +318,146 @@
         });
         tdAct.appendChild(btn);
       },
+      setNeedsSerial(jBase){
+        tr.classList.remove('row-ghost');
+        tdMfr.innerHTML = '';
+        tdModel.innerHTML = '';
+        tdSN.innerHTML = '';
+        tdCPU.innerHTML = '';
+        tdRAM.innerHTML = '';
+        tdAct.innerHTML = '';
+
+        const serialBox = inputCell('', 'Enter Serial / Service Tag');
+        serialBox.style.width = '220px';
+
+        const addBtn = document.createElement('button');
+        addBtn.textContent = 'Add Serial No.';
+        addBtn.className = 'primary';
+
+        const status = document.createElement('span');
+        status.className = 'hint';
+        status.style.marginLeft = '8px';
+
+        const inline = document.createElement('div');
+        inline.className = 'inlineFlex';
+        inline.appendChild(serialBox);
+        inline.appendChild(addBtn);
+        inline.appendChild(status);
+        tdAct.appendChild(inline);
+
+        addBtn.addEventListener('click', async ()=>{
+          const s = normalizeSerial(serialBox.value);
+          if(!s){ status.textContent = 'Enter a serial/service tag first.'; return; }
+          addBtn.disabled = true; status.textContent = 'Looking up…';
+          try{
+            const r = await fetch('/manual_serial_lookup', {
+              method:'POST',
+              headers:{'Content-Type':'application/json'},
+              body: JSON.stringify({serial: s})
+            });
+            const j = await r.json().catch(()=> ({}));
+            addBtn.disabled = false;
+            if(!r.ok){ throw new Error((j && (j.detail||j.error)) || `HTTP ${r.status}`); }
+            if(!(j && (j.manufacturer || j.model_no || j.cpu || j.ram))){
+              status.textContent = 'No OEM data found. Check the serial.';
+              return;
+            }
+            // Build a "row payload" so we can reuse setReady
+            const merged = Object.assign({}, jBase, {
+              manufacturer: j.manufacturer || '',
+              model_no: j.model_no || '',
+              cpu: j.cpu || '',
+              ram: j.ram || '',
+              serial: j.serial || s
+            });
+            tdSN.textContent = ''; // clear static cell
+            // Now render inputs with data and confirm action
+            tr.classList.add('row-ghost'); // briefly, then switched by setReady
+            const fake = Object.assign({}, merged);
+            // mimic server shape for setReady()
+            setTimeout(()=> apiSetReady(fake), 0);
+          }catch(e){
+            addBtn.disabled = false;
+            status.textContent = 'Lookup failed: ' + e.message;
+          }
+        });
+
+        function apiSetReady(j){
+          // this wraps setReady with a minimal object
+          obj.setReady(j);
+        }
+
+        const obj = { setReady: null };
+        obj.setReady = (j)=> {
+          // Reuse the shared setReady implementation by reconstructing
+          tdAct.innerHTML = '';
+          // Build editable cells:
+          tdMfr.innerHTML  = ''; const inpMfr   = inputCell(j.manufacturer || '');
+          tdModel.innerHTML= ''; const inpModel = inputCell((j.model_no || j.retail_model_guess || ''));
+          tdSN.innerHTML   = ''; const inpSN    = inputCell(j.serial || '', 'Serial / Service Tag');
+          tdCPU.innerHTML  = ''; const inpCPU   = inputCell(j.cpu || '');
+          tdRAM.innerHTML  = ''; const inpRAM   = inputCell(j.ram || '');
+          tdMfr.appendChild(inpMfr);
+          tdModel.appendChild(inpModel);
+          tdSN.appendChild(inpSN);
+          tdCPU.appendChild(inpCPU);
+          tdRAM.appendChild(inpRAM);
+
+          const btn = document.createElement('button');
+          btn.className = 'primary';
+          btn.textContent = 'Confirm';
+          btn.addEventListener('click', async ()=>{
+            try{
+              btn.disabled = true;
+              const payload = {
+                time: jBase.time,
+                order_no: tdOrder.textContent || '',
+                file_a: jBase.file_a, file_b: jBase.file_b,
+                manufacturer: inpMfr.value.trim(),
+                model_no:     inpModel.value.trim(),
+                serial:       (inpSN.value || '').trim().toUpperCase(),
+                cpu:          inpCPU.value.trim(),
+                ram:          inpRAM.value.trim(),
+                product_no:   jBase.product_no || '',
+                reg_model:    jBase.reg_model || '',
+                reg_type:     jBase.reg_type || '',
+                dpn:          jBase.dpn || '',
+                input_power:  jBase.input_power || '',
+                retail_model_guess: jBase.retail_model_guess || '',
+                notes:        jBase.notes || '',
+                raw_json:     jBase.raw_json || ''
+              };
+              const rr = await fetch('/confirm_row', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify(payload)
+              });
+              const jj = await rr.json().catch(()=> ({}));
+              if(!rr.ok){ btn.disabled = false; throw new Error((jj && (jj.detail||jj.error)) || `HTTP ${rr.status}`); }
+              tdAct.innerHTML = '';
+              tdAct.appendChild(makeStatusTag('ready','Saved'));
+              setStatus('Saved. You can keep adding laptops.');
+            }catch(e){
+              tdAct.innerHTML = '';
+              const fail = makeStatusTag('fail','Save failed');
+              tdAct.appendChild(fail);
+              const retry = document.createElement('button');
+              retry.style.marginLeft='8px';
+              retry.textContent='Retry Save';
+              retry.addEventListener('click', ()=> btn.click());
+              tdAct.appendChild(retry);
+            }
+          });
+          tdAct.appendChild(btn);
+        };
+
+        // Put a faint hint in the row cells to show it's blank, awaiting serial
+        tdMfr.textContent = '—';
+        tdModel.textContent = '—';
+        tdSN.textContent = '(waiting)';
+        tdCPU.textContent = '—';
+        tdRAM.textContent = '—';
+      },
       setFailed(message){
         tr.classList.remove('row-ghost');
         tdAct.innerHTML = '';
@@ -322,13 +474,12 @@
   function tableToCSV(){
     const tbody = byId('tbody');
     const rows = Array.from(tbody.querySelectorAll('tr'));
-    const headers = ['#','Manufacturer','Model','Serial','CPU','RAM','Status'];
+    const headers = ['#','Order No.','Manufacturer','Model','Serial','CPU','RAM','Status'];
     const data = [headers];
 
     rows.forEach(tr=>{
       const tds = tr.querySelectorAll('td');
-      if (tds.length < 7) return;
-      // Because first td contains delete button + number, read the number span
+      if (tds.length < 8) return;
       const idxSpan = tds[0].querySelector('.rownum');
       const idx = idxSpan ? idxSpan.textContent.trim() : (tds[0].textContent || '').trim();
 
@@ -337,13 +488,14 @@
         if (inp) return inp.value;
         return (td.textContent || '').trim();
       }
-      const mfr   = val(tds[1]);
-      const model = val(tds[2]);
-      const sn    = val(tds[3]);
-      const cpu   = val(tds[4]);
-      const ram   = val(tds[5]);
-      const stat  = (tds[6].textContent || '').replace(/\s+/g,' ').trim();
-      data.push([idx,mfr,model,sn,cpu,ram,stat]);
+      const order = val(tds[1]);
+      const mfr   = val(tds[2]);
+      const model = val(tds[3]);
+      const sn    = val(tds[4]);
+      const cpu   = val(tds[5]);
+      const ram   = val(tds[6]);
+      const stat  = (tds[7].textContent || '').replace(/\s+/g,' ').trim();
+      data.push([idx,order,mfr,model,sn,cpu,ram,stat]);
     });
 
     const csv = data.map(row => row.map(cell=>{
@@ -367,12 +519,8 @@
     hardResetUI();
     const analyzeBtn    = byId('analyzeBtn');
     const resetBtn      = byId('resetBtn');
-    const serialEl      = byId('serialInput');
     const downloadBtn   = byId('downloadCsvBtn');
-
-    serialEl.addEventListener('input', ()=>{
-      serialEl.value = normalizeSerial(serialEl.value);
-    });
+    const orderInput    = byId('orderInput');
 
     resetBtn.addEventListener('click', hardResetUI);
     downloadBtn.addEventListener('click', tableToCSV);
@@ -380,35 +528,58 @@
     analyzeBtn.addEventListener('click', async () => {
       try{
         const { fileA, fileB } = getFilesSafe();
-        const st = normalizeSerial(serialEl.value);
-
         if(!(fileA.files && fileA.files[0]) || !(fileB.files && fileB.files[0])){
-          setStatus("Please add both photos before analyzing.", true);
+          setStatus("Please add both tag photos before analyzing.", true);
           return;
         }
+        const orderNo = (orderInput.value || '').trim();
 
         const fa = fileA.files[0];
         const fb = fileB.files[0];
 
-        const row = addPendingRow(st);
+        const row = addPendingRow(orderNo);
         row.setWorking();
 
+        // Reset inputs so you can move to the next device immediately
         hardResetUI();
-        setStatus("Queued. You can add the next laptop while this analyzes.");
+        orderInput.value = orderNo; // keep sticky
+        setStatus("Queued. You can add the next device while this analyzes.");
 
         const fd = new FormData();
         fd.append('fileA', fa);
         fd.append('fileB', fb);
-        if (st) fd.append('manual_serial', st);
+        if (orderNo) fd.append('order_no', orderNo);
 
         const r = await fetch('/analyze_pair', { method:'POST', body: fd });
         const j = await r.json().catch(()=> ({}));
         if(!r.ok){ throw new Error((j && (j.detail||j.error)) || `HTTP ${r.status}`); }
 
-        row.setReady(j);
+        // If server returned a row with no serial/manufacturer/model, show "Add serial no."
+        const hasSerial = !!(j && j.serial);
+        const hasAnyDevice = (j && (j.manufacturer || j.model_no || j.cpu || j.ram));
+        if (!hasSerial && !hasAnyDevice) {
+          // minimal base for confirm later after manual lookup
+          const base = Object.assign({
+            time: j.time,
+            order_no: j.order_no || orderNo,
+            file_a: j.file_a,
+            file_b: j.file_b,
+            product_no: '',
+            reg_model: '',
+            reg_type: '',
+            dpn: '',
+            input_power: '',
+            retail_model_guess: '',
+            notes: '',
+            raw_json: j.raw_json || ''
+          }, {});
+          row.setNeedsSerial(base);
+        } else {
+          row.setReady(j);
+        }
       }catch(e){
         setStatus("Analyze failed: " + e.message, true);
-        const row = addPendingRow(byId('serialInput').value || '');
+        const row = addPendingRow(byId('orderInput').value || '');
         row.setFailed(e.message);
       }
     });

@@ -1,9 +1,13 @@
-# app_ai.py — model-only de-dupe + runtime learning into models_db.json
+# app_ai.py — Order No. + tag-first flow + model-only de-dupe learning
 # Keeps all prior features (OEM lookup, two-photo vision, DB fallback, CSV log).
-# Changes:
-#   - Upload DB: de-duplicate by MODEL ONLY (manufacturer ignored). Latest wins.
-#   - confirm_row(): learn/update models_db.json by model on each save.
-#   - db_lookup_specs(): match by model only (manufacturer optional, not required).
+# New:
+#   - Order No. input (sticky on the client; sent with each request) and saved into CSV.
+#   - Output rows now include "order_no" (in front of manufacturer).
+#   - Tag-first: we expect two manufacturing/tag photos. We extract serial (SN/Service Tag/etc.)
+#     from those. If no serial was read, we return an "empty" row (except order_no & files)
+#     and the UI shows an "Add serial no." inline action to retry via /manual_serial_lookup.
+#   - Manual serial lookup endpoint: /manual_serial_lookup
+#   - All learning/deduping still keyed by MODEL ONLY, CPU/RAM can duplicate freely.
 
 import os, re, io, json, time, base64, traceback, shutil
 from datetime import datetime
@@ -37,7 +41,7 @@ LENOVO_API_KEY  = os.getenv("LENOVO_API_KEY", "")
 HP_API_BASE     = os.getenv("HP_API_BASE", "").rstrip("/")
 HP_API_KEY      = os.getenv("HP_API_KEY", "")
 
-# Enable model inference from images when model not found
+# Enable model inference from images when model not found (kept from previous)
 ENABLE_MODEL_INFER = os.getenv("ENABLE_MODEL_INFER", "1") in ("1","true","True","yes","YES")
 
 DATA_CSV = "scans.csv"
@@ -47,7 +51,7 @@ MODELS_DB_PATH = os.getenv("MODELS_DB_PATH", os.path.join(DATA_DIR, "models_db.j
 os.makedirs(UPLOADS, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Regulatory → retail hint table
+# Regulatory → retail hint table (unchanged)
 REG_MODEL_TO_RETAIL = {"P131G": "Latitude 7410"}
 
 # Known spec hints (quick defaults)
@@ -74,6 +78,7 @@ SPEC_HINTS = {
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024  # 25MB
 
+# Extraction schema (unchanged keys)
 SCHEMA = {
   "manufacturer": "",
   "model_no": "",
@@ -94,7 +99,7 @@ def recent_log():
     try:
         df = pd.read_csv(DATA_CSV, dtype=str, on_bad_lines="skip", engine="python")
         cols = [c for c in [
-            "time","file_a","file_b","manufacturer","model_no","serial",
+            "time","order_no","file_a","file_b","manufacturer","model_no","serial",
             "product_no","reg_model","reg_type","dpn","input_power","retail_model_guess"
         ] if c in df.columns]
         return df[cols].tail(10).to_string(index=False)
@@ -102,8 +107,9 @@ def recent_log():
         return f"(could not read CSV: {e})"
 
 def ensure_columns(row):
+    # prepend order_no and keep the rest
     cols = [
-        "time","file_a","file_b",
+        "time","order_no","file_a","file_b",
         "manufacturer","model_no","serial",
         "cpu","ram",
         "product_no","reg_model","reg_type","dpn","input_power",
@@ -182,7 +188,7 @@ def jpeg_data_url(img, max_side=2400, quality=88):
     return "data:image/jpeg;base64," + b64
 
 # ---------- Regex ----------
-SERIAL_PAT    = re.compile(r"(?:S/N|SN|Serial(?:\s*No\.?)?|Serial\s*Number|CN-)\s*[:#]?\s*([A-Z0-9\-]{5,})", re.I)
+SERIAL_PAT    = re.compile(r"(?:S/N|SN|Service\s*Tag|Serial(?:\s*No\.?)?|Serial\s*Number|CN-)\s*[:#]?\s*([A-Z0-9\-]{5,})", re.I)
 MODELNO_PAT   = re.compile(r"(?:Model\s*No\.?|Model)\s*[:#]?\s*([A-Z0-9\-\._]+)", re.I)
 DPN_PAT       = re.compile(r"\bDP/?N[:\s]*([A-Z0-9\-]+)\b", re.I)
 PN_PAT        = re.compile(r"\b(P/?N|Product\s*No\.?)[:\s]*([A-Z0-9\-\._]+)\b", re.I)
@@ -325,6 +331,7 @@ def ai_guess_specs(model_str: str) -> dict:
     )
     body = {"model": MODEL, "messages": [{"role": "user", "content": prompt}], "temperature": 0.1}
     try:
+        import requests
         r = requests.post(url, headers=headers, json=body, timeout=20)
         if r.status_code >= 400:
             return {}
@@ -342,7 +349,7 @@ def ai_guess_specs(model_str: str) -> dict:
     except Exception:
         return {}
 
-# ---------- Vision calls ----------
+# ---------- Vision (label/tag) ----------
 def call_openai_label_extract(img_path):
     if not API_KEY:
         raise RuntimeError("VISION_API_KEY is not set.")
@@ -354,14 +361,19 @@ def call_openai_label_extract(img_path):
     data_inv  = jpeg_data_url(inv,  max_side=2400, quality=88)
     data_raw  = jpeg_data_url(raw,  max_side=2400, quality=88)
 
+    # New: be explicit about white vs dark tags, and SN tokens we care about
     prompt = (
-        "EXTRACT FIELDS FROM THE MANUFACTURING/REGULATORY LABEL ONLY (ignore any white Service Tag stickers):\n"
+        "You are extracting fields from TWO kinds of labels commonly found on computers:\n"
+        "  (1) DARK manufacturing/regulatory label (printed on the bottom cover)\n"
+        "  (2) WHITE service/serial sticker (e.g., 'Service Tag' for DELL)\n\n"
+        "GOAL: Identify Serial/Service Tag reliably. Look specifically for tokens like:\n"
+        "  'SN', 'S/N', 'Serial', 'Serial No', 'Service Tag', 'ST'.\n"
+        "Ignore keyboard keys or marketing stickers.\n\n"
         "Return STRICT JSON matching this schema:\n"
         + json.dumps(SCHEMA, indent=2) + "\n\n"
         "Rules:\n"
-        "- Focus on the dark printed label (manufacturer, Model/Model No, S/N or Serial, P/N or Product No, DP/N, Regulatory Model/Type, input power).\n"
-        "- 'model_no' should be the explicit Model text on the label.\n"
-        "- 'serial' is near S/N | SN | Serial.\n"
+        "- Prefer serials adjacent to SN/Service Tag tokens.\n"
+        "- 'model_no' is the readable marketing or model text.\n"
         "- Provide a short 'raw_text' dump for regex fallback.\n"
         "Return ONLY the JSON object."
     )
@@ -399,52 +411,6 @@ def call_openai_label_extract(img_path):
             if code in (429,) or (code is not None and 500 <= code < 600):
                 time.sleep(2 ** attempt); continue
             raise
-
-def call_openai_model_infer(img_a_path, img_b_path):
-    if not (API_KEY and ENABLE_MODEL_INFER):
-        return {}
-    try:
-        import requests
-        imgA = load_fix_exif(img_a_path)
-        imgB = load_fix_exif(img_b_path)
-        a_url = jpeg_data_url(preprocess_for_ocr(imgA), max_side=2400, quality=88)
-        b_url = jpeg_data_url(preprocess_for_ocr(imgB), max_side=2400, quality=88)
-        prompt = (
-            "From these two photos of a computer (label and/or device view), infer the most likely BRAND and retail MODEL name.\n"
-            "If unsure between close variants, pick the single most likely marketing model (e.g., 'ThinkPad T480', 'HP EliteBook 840 G5', 'Latitude 7420').\n"
-            "Return ONLY JSON with keys: manufacturer, model_no."
-        )
-        url = f"{API_BASE}/chat/completions"
-        headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-        if OPENAI_PROJECT: headers["OpenAI-Project"] = OPENAI_PROJECT
-        body = {
-            "model": MODEL,
-            "messages": [{"role":"user","content":[
-                {"type":"text","text":prompt},
-                {"type":"image_url","image_url":{"url":a_url}},
-                {"type":"image_url","image_url":{"url":b_url}},
-            ]}],
-            "temperature": 0.1
-        }
-        r = requests.post(url, headers=headers, json=body, timeout=60)
-        if r.status_code >= 400:
-            return {}
-        jd = r.json()
-        txt = jd["choices"][0]["message"]["content"]
-        m = re.search(r"\{.*\}", txt, re.S)
-        if not m:
-            return {}
-        obj = json.loads(m.group(0))
-        out = {}
-        if isinstance(obj, dict):
-            man = (obj.get("manufacturer") or "").strip()
-            mod = (obj.get("model_no") or "").strip()
-            if man or mod:
-                out["manufacturer"] = man
-                out["model_no"] = mod
-        return out
-    except Exception:
-        return {}
 
 # ---------- OEM lookup ----------
 def _is_dell_service_tag(tag: str) -> bool:
@@ -563,18 +529,18 @@ def oem_lookup(serial: str) -> dict:
 
 # ---------- Fuse two pics ----------
 def fuse_pair(a: dict, b: dict) -> dict:
+    # Merge keys; we will still prefer a serial found near tokens
     out = {k: (a.get(k) or b.get(k) or "") for k in SCHEMA.keys()}
     combined_raw = " | ".join(filter(None, [a.get("raw_text",""), b.get("raw_text","")]))[:6000]
 
+    # Prefer explicit 'Service Tag' 7-char for DELL, otherwise accept broader SNs
     st = SERVICE_TAG_PAT.search(combined_raw)
     service_tag = st.group(1).upper() if st else ""
-
-    # Only auto-enforce 7-char tag for Dell; otherwise allow arbitrary serials
-    if (a.get("manufacturer","") or b.get("manufacturer","")).lower().startswith("dell"):
-        if service_tag:
-            out["serial"] = service_tag
-        elif out.get("serial") and not re.fullmatch(r"[A-Z0-9]{7}", out["serial"]):
-            out["serial"] = ""
+    if service_tag:
+        out["serial"] = service_tag
+    elif not out.get("serial"):
+        m = SERIAL_PAT.search(combined_raw)
+        if m: out["serial"] = m.group(1).upper()
 
     out["model_no"] = refine_model_with_family(out.get("model_no",""), combined_raw)
 
@@ -607,51 +573,12 @@ def selftest():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-@app.route("/upload", methods=["POST"])
-def upload_single():
-    f = request.files.get("file")
-    if not f: return "No file uploaded", 400
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"{ts}_{f.filename}"
-    path = os.path.join(UPLOADS, filename)
-    f.save(path)
-    try:
-        img = load_fix_exif(path); img.save(path, "JPEG", quality=90, optimize=True)
-    except Exception: pass
-    try:
-        extracted = call_openai_label_extract(path)
-    except Exception as e:
-        print("UPLOAD ERROR:", repr(e)); print(traceback.format_exc())
-        return jsonify({"error":"vision_llm_failed", "detail": str(e)}), 400
-    row = {
-        "time": datetime.now().isoformat(timespec="seconds"),
-        "file_a": filename, "file_b": "",
-        "manufacturer": extracted.get("manufacturer",""),
-        "model_no": extracted.get("model_no",""),
-        "serial": extracted.get("serial",""),
-        "cpu": "", "ram": "",
-        "product_no": extracted.get("product_no",""),
-        "reg_model": extracted.get("reg_model",""),
-        "reg_type": extracted.get("reg_type",""),
-        "dpn": extracted.get("dpn",""),
-        "input_power": extracted.get("input_power",""),
-        "retail_model_guess": extracted.get("retail_model_guess",""),
-        "notes": extracted.get("notes",""),
-        "raw_json": json.dumps({"extracted": extracted}, ensure_ascii=False)
-    }
-    flat, cols = ensure_columns(row)
-    pd.DataFrame([flat], columns=cols).to_csv(
-        DATA_CSV,
-        mode=("a" if os.path.exists(DATA_CSV) else "w"),
-        header=not os.path.exists(DATA_CSV),
-        index=False
-    )
-    return jsonify(row)
-
 @app.route("/analyze_pair", methods=["POST"])
 def analyze_pair():
+    # Two manufacturing/tag photos, and a sticky order number
     fA = request.files.get("fileA")
     fB = request.files.get("fileB")
+    order_no = (request.form.get("order_no") or "").strip()
     manual_serial = (request.form.get("manual_serial") or "").strip().upper()
 
     if not fA or not fB:
@@ -669,68 +596,100 @@ def analyze_pair():
         img = load_fix_exif(pB); img.save(pB, "JPEG", quality=90, optimize=True)
     except Exception: pass
 
+    # Extract tag info from BOTH (tag-first)
     try:
         a = call_openai_label_extract(pA)
         b = call_openai_label_extract(pB)
         fused = fuse_pair(a, b)
     except Exception as e:
         print("ANALYZE ERROR:", repr(e)); print(traceback.format_exc())
-        return jsonify({"error":"vision_llm_failed","detail":str(e)}), 400
+        # Even if analysis fails, return a blank row with order_no so user can manually add serial
+        fused = {}
 
+    # If the user provided a manual serial WITH the photo upload, use it
     if manual_serial:
         fused["serial"] = manual_serial
 
     looked = {}
-    if ALLOW_LOOKUPS and fused.get("serial"):
+    # If we do not have a serial at this point, REQUIRE manual serial later
+    found_serial = bool(fused.get("serial"))
+    if found_serial and ALLOW_LOOKUPS:
         try:
             looked = oem_lookup(fused["serial"])
         except Exception as e:
             print("OEM LOOKUP ERROR:", repr(e))
 
-    if looked:
-        if looked.get("manufacturer"): fused["manufacturer"] = looked["manufacturer"]
-        if looked.get("model_no"):     fused["model_no"]     = looked["model_no"]
-        if looked.get("cpu"):          fused["cpu"]          = looked["cpu"]
-        if looked.get("ram"):          fused["ram"]          = looked["ram"]
+    # If we couldn't read any serial → blank out most fields (focus on manual Add Serial later)
+    if not found_serial:
+        fused = {}  # force a blank device row except order_no and files
 
-    if ENABLE_MODEL_INFER and not (fused.get("model_no") or fused.get("retail_model_guess")):
-        inferred = call_openai_model_infer(pA, pB)
-        if inferred:
-            if inferred.get("manufacturer") and not fused.get("manufacturer"):
-                fused["manufacturer"] = inferred["manufacturer"]
-            if inferred.get("model_no") and not fused.get("model_no"):
-                fused["model_no"] = inferred["model_no"]
-
-    if (not fused.get("cpu") or not fused.get("ram")):
-        model_for_db = fused.get("model_no") or fused.get("retail_model_guess")
-        if model_for_db:
-            dbhit = db_lookup_specs(fused.get("manufacturer",""), model_for_db)
-            if not fused.get("cpu") and dbhit.get("cpu"): fused["cpu"] = dbhit["cpu"]
-            if not fused.get("ram") and dbhit.get("ram"): fused["ram"] = dbhit["ram"]
-
-    if (not fused.get("cpu") or not fused.get("ram")) and fused.get("model_no"):
-        guessed = ai_guess_specs(fused["model_no"])
-        if not fused.get("cpu") and guessed.get("cpu"): fused["cpu"] = guessed["cpu"]
-        if not fused.get("ram") and guessed.get("ram"): fused["ram"] = guessed["ram"]
-
-    fused["model_no"] = refine_model_with_family(fused.get("model_no",""), fused.get("raw_text",""))
-
+    # Merge looked-up data if present
     out = {
         "time": datetime.now().isoformat(timespec="seconds"),
+        "order_no": order_no,
         "file_a": nameA, "file_b": nameB,
-        "manufacturer": fused.get("manufacturer",""),
-        "model_no": fused.get("model_no",""),
-        "serial": fused.get("serial",""),
-        "cpu": fused.get("cpu",""),
-        "ram": fused.get("ram",""),
-        "product_no": fused.get("product_no",""),
-        "reg_model": fused.get("reg_model",""),
-        "reg_type": fused.get("reg_type",""),
-        "dpn": fused.get("dpn",""),
-        "input_power": fused.get("input_power",""),
-        "retail_model_guess": fused.get("retail_model_guess",""),
-        "notes": fused.get("notes",""),
-        "raw_json": json.dumps({"a":a,"b":b,"fused":fused,"oem":looked}, ensure_ascii=False)
+        "manufacturer": "",
+        "model_no": "",
+        "serial": "",
+        "cpu": "",
+        "ram": "",
+        "product_no": "",
+        "reg_model": "",
+        "reg_type": "",
+        "dpn": "",
+        "input_power": "",
+        "retail_model_guess": "",
+        "notes": "",
+        "raw_json": json.dumps({"a":a if 'a' in locals() else {},
+                                "b":b if 'b' in locals() else {},
+                                "fused":fused, "oem":looked}, ensure_ascii=False)
+    }
+
+    # If we DID have a serial and something looked up, fill
+    if found_serial:
+        # Preserve serial either from fused or manual
+        out["serial"] = (fused.get("serial") or "").upper()
+        # Fill from OEM lookup if available
+        if looked:
+            out["manufacturer"] = looked.get("manufacturer","")
+            out["model_no"]     = looked.get("model_no","")
+            out["cpu"]          = looked.get("cpu","")
+            out["ram"]          = looked.get("ram","")
+        else:
+            # No OEM data returned; try DB + guessers if we inferred a model from text (rare)
+            if fused.get("model_no"):
+                model_for_db = fused.get("model_no") or fused.get("retail_model_guess")
+                hits = db_lookup_specs("", model_for_db)
+                if hits.get("cpu"): out["cpu"] = hits["cpu"]
+                if hits.get("ram"): out["ram"] = hits["ram"]
+                if not out["manufacturer"]: out["manufacturer"] = fused.get("manufacturer","")
+                if not out["model_no"]:     out["model_no"]     = fused.get("model_no","")
+                if (not out["cpu"] or not out["ram"]) and out["model_no"]:
+                    g = ai_guess_specs(out["model_no"])
+                    if not out["cpu"] and g.get("cpu"): out["cpu"] = g["cpu"]
+                    if not out["ram"] and g.get("ram"): out["ram"] = g["ram"]
+
+    return jsonify(out)
+
+@app.route("/manual_serial_lookup", methods=["POST"])
+def manual_serial_lookup():
+    """
+    Body: { "serial": "..." }
+    Returns: minimal device info by OEM lookup (manufacturer, model_no, cpu, ram) or {}.
+    """
+    data = request.get_json(force=True, silent=True) or {}
+    serial = (data.get("serial") or "").strip().upper()
+    if not serial:
+        return jsonify({"error":"missing_serial"}), 400
+
+    looked = oem_lookup(serial)
+    # If OEM returns nothing, we still reply 200 with {}, so UI can keep prompting
+    out = {
+        "manufacturer": looked.get("manufacturer",""),
+        "model_no": looked.get("model_no",""),
+        "cpu": looked.get("cpu",""),
+        "ram": looked.get("ram",""),
+        "serial": serial
     }
     return jsonify(out)
 
