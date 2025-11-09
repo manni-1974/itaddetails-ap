@@ -1,8 +1,8 @@
-# app_ai.py — serial-first + OEM lookup + vision model inference + DB + LLM spec guess
-# Keeps all past features. Adds:
-#   - Model inference from the two images if OEM/label doesn't yield a model
-#   - Serial input can be any length (Lenovo/HP compatible)
-#   - Optional Lenovo/HP lookup hooks via env (remain safe no-ops if not configured)
+# + OEM lookup + vision model inference + DB + LLM spec guess
+# Keeps all past features. Changes in this version:
+#   - Upload DB dedupes by MODEL ONLY (manufacturer optional; latest row wins)
+#   - Runtime db_lookup_specs() matches by MODEL ONLY
+#   - /analyze_pair uses model-only DB lookup for final fill if blank
 
 import os, re, io, json, time, base64, traceback, shutil
 from datetime import datetime
@@ -31,7 +31,7 @@ ALLOW_LOOKUPS = os.getenv("ALLOW_LOOKUPS", "1") in ("1","true","True","yes","YES
 LOOKUP_TIMEOUT = float(os.getenv("LOOKUP_TIMEOUT", "8.0"))
 
 # Optional OEM configs (remain safe if blank)
-LENOVO_API_BASE = os.getenv("LENOVO_API_BASE", "").rstrip("/")  # e.g., private gateway if you have one
+LENOVO_API_BASE = os.getenv("LENOVO_API_BASE", "").rstrip("/")
 LENOVO_API_KEY  = os.getenv("LENOVO_API_KEY", "")
 HP_API_BASE     = os.getenv("HP_API_BASE", "").rstrip("/")
 HP_API_KEY      = os.getenv("HP_API_KEY", "")
@@ -446,8 +446,6 @@ def _lookup_lenovo_by_serial(sn: str):
         return out
     try:
         import requests
-        # Example (adjust to your gateway):
-        # GET {LENOVO_API_BASE}/lookup?serial={sn}  with header X-API-Key
         r = requests.get(
             f"{LENOVO_API_BASE}/lookup",
             params={"serial": sn},
@@ -457,7 +455,6 @@ def _lookup_lenovo_by_serial(sn: str):
         if r.status_code != 200:
             return out
         data = r.json() if r.content else {}
-        # Expect shape: {"manufacturer":"LENOVO","model_no":"ThinkPad T480","cpu":"...","ram":"..."} (customize to your gateway)
         if isinstance(data, dict):
             for k in ("manufacturer","model_no","cpu","ram"):
                 if data.get(k): out[k] = str(data[k]).strip()
@@ -535,38 +532,31 @@ def _load_models_db():
 def _norm(s):
     return re.sub(r"\s+", " ", (s or "").strip()).lower()
 
-def db_lookup_specs(manufacturer: str, model_name: str) -> dict:
-    manufacturer = _norm(manufacturer)
+def db_lookup_specs(model_name: str) -> dict:
+    """
+    Model-only lookup (manufacturer ignored).
+    Returns {"cpu": "...", "ram": "..."} if found, else {}.
+    Matches either model_no or any alt_names entry (case/spacing-insensitive).
+    """
     model_name_n = _norm(model_name)
     if not model_name_n:
         return {}
 
     records = _load_models_db()
-    best = {}
     for rec in records:
-        mfr = _norm(rec.get("manufacturer",""))
-        mdl = _norm(rec.get("model_no","") or rec.get("model",""))
+        mdl = _norm(rec.get("model_no", "") or rec.get("model", ""))
         alts = rec.get("alt_names") or []
         if not isinstance(alts, list):
             alts = []
 
-        hit = False
-        if manufacturer and mfr and (manufacturer == mfr) and mdl and (model_name_n == mdl):
-            hit = True
-        elif mdl and (model_name_n == mdl):
-            hit = True
-        elif any(_norm(a) == model_name_n for a in alts):
-            hit = True
-
-        if hit:
+        if (mdl and mdl == model_name_n) or any(_norm(a) == model_name_n for a in alts):
+            out = {}
             cpu = (rec.get("cpu") or "").strip()
             ram = (rec.get("ram") or "").strip()
-            if cpu or ram:
-                best = {}
-                if cpu: best["cpu"] = cpu
-                if ram: best["ram"] = ram
-                break
-    return best
+            if cpu: out["cpu"] = cpu
+            if ram: out["ram"] = ram
+            return out
+    return {}
 
 # ---------- Fuse two pics ----------
 def fuse_pair(a: dict, b: dict) -> dict:
@@ -581,7 +571,6 @@ def fuse_pair(a: dict, b: dict) -> dict:
         if service_tag:
             out["serial"] = service_tag
         elif out.get("serial") and not re.fullmatch(r"[A-Z0-9]{7}", out["serial"]):
-            # Vision pulled a non-7 serial for Dell — discard
             out["serial"] = ""
 
     # Family model refinement
@@ -669,7 +658,7 @@ def analyze_pair():
       2) Fuse results.
       3) If manual_serial provided, override serial with it (any length).
       4) If ALLOW_LOOKUPS and serial, try OEM lookup (Dell/Lenovo/HP). (Lenovo/HP no-op unless configured)
-      5) If cpu/ram blank but we have a model ⇒ DB fallback.
+      5) If cpu/ram blank but we have a model ⇒ DB fallback (model-only).
       6) If model still blank ⇒ vision-based model inference from the two images.
       7) If still cpu/ram blank but model known ⇒ tiny LLM text guess.
       8) Return fused+enhanced JSON.
@@ -703,7 +692,6 @@ def analyze_pair():
 
     # Serial override (any length)
     if manual_serial:
-        # For Dell, a non-7 override won't be treated as service tag. Still useful for DB naming/dedupe.
         fused["serial"] = manual_serial
 
     # OEM lookup (best-effort)
@@ -730,11 +718,11 @@ def analyze_pair():
             if inferred.get("model_no") and not fused.get("model_no"):
                 fused["model_no"] = inferred["model_no"]
 
-    # If CPU/RAM blank but we have a model, try local DB
+    # If CPU/RAM blank but we have a model, try local DB (model-only)
     if (not fused.get("cpu") or not fused.get("ram")):
         model_for_db = fused.get("model_no") or fused.get("retail_model_guess")
         if model_for_db:
-            dbhit = db_lookup_specs(fused.get("manufacturer",""), model_for_db)
+            dbhit = db_lookup_specs(model_for_db)
             if not fused.get("cpu") and dbhit.get("cpu"): fused["cpu"] = dbhit["cpu"]
             if not fused.get("ram") and dbhit.get("ram"): fused["ram"] = dbhit["ram"]
 
@@ -819,7 +807,7 @@ INLINE_UPLOAD_DB_HTML = """<!doctype html>
     const r = await fetch('/upload-db', { method:'POST', body: fd });
     const j = await r.json().catch(()=> ({}));
     if(!r.ok){ setStatus((j.detail || j.error || ('HTTP '+r.status)), false); return; }
-    setStatus('OK — database updated. Saved to ' + (j.path || 'data/models_db.json') + ' (' + (j.count||0) + ' records).', true);
+    setStatus('OK — database updated (deduped by model only). Saved to ' + (j.path || 'data/models_db.json') + ' (' + (j.count||0) + ' records).', true);
   });
 })();
 </script>
@@ -832,18 +820,14 @@ def upload_db_page():
     except TemplateNotFound:
         return INLINE_UPLOAD_DB_HTML
 
-# ===== Upload DB builder =====
+# ===== Upload DB builder (MODEL-ONLY DEDUPE) =====
 @app.route("/upload-db", methods=["POST"])
 def upload_db_post():
     """
     Excel/CSV → data/models_db.json
-    Columns (case-insensitive; aliases ok):
-      - manufacturer
-      - model / model_no
-      - cpu
-      - ram
-      - alt_names (optional; comma-separated)
-    Dedup key: (manufacturer, model_no) normalized.
+    Dedup policy: **by model only** (manufacturer ignored). Latest row wins.
+    Required column: model or model_no
+    Optional: manufacturer, cpu, ram, alt_names (comma-separated)
     """
     f = request.files.get("file")
     if not f:
@@ -859,49 +843,55 @@ def upload_db_post():
         else:
             df = pd.read_csv(f, dtype=str)
 
+        # normalize columns
         df.columns = [c.strip().lower() for c in df.columns]
-        alias = {"model":"model_no","model number":"model_no","modelname":"model_no","model_name":"model_no"}
+        alias = {
+            "model":"model_no",
+            "model number":"model_no",
+            "modelname":"model_no",
+            "model_name":"model_no"
+        }
         df.columns = [alias.get(c, c) for c in df.columns]
 
-        if "manufacturer" not in df.columns:
-            return jsonify({"error":"missing_column", "detail":"manufacturer"}), 400
         if "model_no" not in df.columns:
             return jsonify({"error":"missing_column", "detail":"model/model_no"}), 400
+        if "manufacturer" not in df.columns: df["manufacturer"] = ""
+        if "cpu" not in df.columns: df["cpu"] = ""
+        if "ram" not in df.columns: df["ram"] = ""
+        if "alt_names" not in df.columns: df["alt_names"] = ""
 
-        for c in ["cpu","ram","alt_names"]:
-            if c not in df.columns:
-                df[c] = ""
-
-        out = []
-        seen = set()
+        # Deduplicate by model only (latest row wins)
+        by_model = {}
+        order = []
         for _, row in df.iterrows():
-            mfr = str(row.get("manufacturer") or "").strip()
             mdl = str(row.get("model_no") or "").strip()
-            if not mfr or not mdl:
+            if not mdl:
                 continue
-            cpu = str(row.get("cpu") or "").strip()
-            ram = str(row.get("ram") or "").strip()
-            alts = row.get("alt_names") or ""
-            if isinstance(alts, str) and alts.strip():
-                alt_list = [a.strip() for a in alts.split(",") if a.strip()]
-            elif isinstance(alts, list):
-                alt_list = [str(a).strip() for a in alts if str(a).strip()]
+            key = _norm(mdl)
+
+            alts_raw = row.get("alt_names")
+            if isinstance(alts_raw, str) and alts_raw.strip():
+                alt_list = [a.strip() for a in alts_raw.split(",") if a.strip()]
+            elif isinstance(alts_raw, list):
+                alt_list = [str(a).strip() for a in alts_raw if str(a).strip()]
             else:
                 alt_list = []
 
-            key = (_norm(mfr), _norm(mdl))
-            if key in seen:
-                continue
-            seen.add(key)
-
-            out.append({
-                "manufacturer": mfr,
+            rec = {
+                "manufacturer": str(row.get("manufacturer") or "").strip(),
                 "model_no": mdl,
-                "cpu": cpu,
-                "ram": ram,
+                "cpu": str(row.get("cpu") or "").strip(),
+                "ram": str(row.get("ram") or "").strip(),
                 "alt_names": alt_list
-            })
+            }
+            by_model[key] = rec
+            if key in order:
+                order.remove(key)
+            order.append(key)
 
+        out = [by_model[k] for k in order]
+
+        # Backup and write JSON
         backup_path = ""
         if os.path.exists(MODELS_DB_PATH):
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")

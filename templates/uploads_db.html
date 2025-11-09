@@ -28,8 +28,8 @@
   <h2>Upload Model Database (Backup Source)</h2>
   <div class="small">
     Upload an <b>Excel (.xlsx)</b> or <b>CSV</b> with columns like:
-    <code>manufacturer</code>, <code>model</code>/<code>model_no</code>, <code>cpu</code>, <code>ram</code>, optional <code>alt_names</code> (comma-separated).<br>
-    Data is normalized, de-duplicated by (manufacturer, model_no), and saved to <b>data/models_db.json</b>.
+    <code>model</code>/<code>model_no</code> (required), optional <code>manufacturer</code>, <code>cpu</code>, <code>ram</code>, and <code>alt_names</code> (comma-separated).<br>
+    Data is normalized and <b>de-duplicated by model only</b> (latest row wins), then saved to <b>data/models_db.json</b>.
   </div>
 
   <div class="card">
@@ -78,7 +78,7 @@
 
     if(!r.ok){ setStatus((j.detail || j.error || ('HTTP '+r.status)), false); return; }
 
-    setStatus('OK — database updated.', true);
+    setStatus('OK — database updated (deduped by model only).', true);
     wrap.style.display = '';
     body.innerHTML = '';
     const rows = [
