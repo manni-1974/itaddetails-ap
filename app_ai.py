@@ -891,6 +891,16 @@ def whereami():
         "models_db_path": MODELS_DB_PATH
     })
 
+from flask import send_file
+
+@app.route("/view-models-db")
+def view_models_db():
+    try:
+        with open("data/models_db.json", "r", encoding="utf-8") as f:
+            return f"<pre>{f.read()}</pre>"
+    except Exception as e:
+        return f"<pre>Error: {e}</pre>"
+
 if __name__ == "__main__":
     print(f"ALLOW_LOOKUPS={ALLOW_LOOKUPS}  LOOKUP_TIMEOUT={LOOKUP_TIMEOUT}s")
     print(f"ENABLE_MODEL_INFER={ENABLE_MODEL_INFER}")
