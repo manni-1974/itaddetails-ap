@@ -1,13 +1,11 @@
-# app_ai.py — Order No. + tag-first flow + model-only de-dupe learning
-# Keeps all prior features (OEM lookup, two-photo vision, DB fallback, CSV log).
-# New:
-#   - Order No. input (sticky on the client; sent with each request) and saved into CSV.
-#   - Output rows now include "order_no" (in front of manufacturer).
-#   - Tag-first: we expect two manufacturing/tag photos. We extract serial (SN/Service Tag/etc.)
-#     from those. If no serial was read, we return an "empty" row (except order_no & files)
-#     and the UI shows an "Add serial no." inline action to retry via /manual_serial_lookup.
-#   - Manual serial lookup endpoint: /manual_serial_lookup
-#   - All learning/deduping still keyed by MODEL ONLY, CPU/RAM can duplicate freely.
+# app_ai.py — Model-first then Serial-only flow + Order No. + model-only de-dupe learning
+# Keeps prior features: OEM helpers, DB fallback/learning, CSV log, /upload-db builder.
+# Supports:
+#   - /analyze_pair: two-photo flow (Photo A + Photo B) for your main "Analyze" button.
+#   - /analyze_model: first photo (manufacturing label / brand imprint) -> fill all EXCEPT serial.
+#   - /analyze_serial: second photo (serial sticker) -> fill ONLY the serial field.
+#   - /manual_serial_lookup: takes serial, returns manufacturer/model/cpu/ram/serial for Add Serial flow.
+#   - /confirm_row: learns by MODEL ONLY; maps file_a/file_b to file_model/file_serial for CSV/log.
 
 import os, re, io, json, time, base64, traceback, shutil
 from datetime import datetime
@@ -31,30 +29,21 @@ API_KEY   = os.getenv("VISION_API_KEY", "")
 MODEL     = os.getenv("VISION_MODEL", "gpt-4o-mini")
 OPENAI_PROJECT = os.getenv("OPENAI_PROJECT", "")
 
-# Allow outbound OEM lookups + network timeouts
-ALLOW_LOOKUPS = os.getenv("ALLOW_LOOKUPS", "1") in ("1","true","True","yes","YES")
-LOOKUP_TIMEOUT = float(os.getenv("LOOKUP_TIMEOUT", "8.0"))
-
-# Optional OEM configs (remain safe if blank)
-LENOVO_API_BASE = os.getenv("LENOVO_API_BASE", "").rstrip("/")
-LENOVO_API_KEY  = os.getenv("LENOVO_API_KEY", "")
-HP_API_BASE     = os.getenv("HP_API_BASE", "").rstrip("/")
-HP_API_KEY      = os.getenv("HP_API_KEY", "")
-
-# Enable model inference from images when model not found (kept from previous)
+ALLOW_LOOKUPS   = os.getenv("ALLOW_LOOKUPS", "1") in ("1","true","True","yes","YES")
+LOOKUP_TIMEOUT  = float(os.getenv("LOOKUP_TIMEOUT", "8.0"))
 ENABLE_MODEL_INFER = os.getenv("ENABLE_MODEL_INFER", "1") in ("1","true","True","yes","YES")
 
 DATA_CSV = "scans.csv"
 UPLOADS  = "uploads"
 DATA_DIR = "data"
-MODELS_DB_PATH = os.getenv("MODELS_DB_PATH", os.path.join(DATA_DIR, "models_db.json"))
+MODELS_DB_PATH = os.path.join(DATA_DIR, "models_db.json")
 os.makedirs(UPLOADS, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Regulatory → retail hint table (unchanged)
+# Regulatory → retail hint
 REG_MODEL_TO_RETAIL = {"P131G": "Latitude 7410"}
 
-# Known spec hints (quick defaults)
+# Quick hints
 SPEC_HINTS = {
     "Latitude 7410": {
         "cpu": "Intel Core i5-10210U / i7-10610U (10th Gen, vPro optional)",
@@ -65,20 +54,19 @@ SPEC_HINTS = {
         "ram": "8 GB default, up to 32 GB DDR4-2666"
     },
     "OptiPlex 7010": {
-        "cpu": "Varies by config (Ivy Bridge i5-3xxx in 2012 gen; newer '7010 Micro' uses 12th Gen)",
-        "ram": "4–16 GB typical; check config"
+        "cpu": "Varies by config",
+        "ram": "4–16 GB typical"
     },
     "OptiPlex 7010 Micro": {
-        "cpu": "Intel 12th Gen (e.g., i5-12500T) — varies by config",
-        "ram": "8–32 GB DDR4 — varies by config"
+        "cpu": "Intel 12th Gen (e.g., i5-12500T)",
+        "ram": "8–32 GB DDR4"
     }
 }
 
-# ========== Flask ==========
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024  # 25MB
 
-# Extraction schema (unchanged keys)
+# Schema used by vision prompt
 SCHEMA = {
   "manufacturer": "",
   "model_no": "",
@@ -99,7 +87,7 @@ def recent_log():
     try:
         df = pd.read_csv(DATA_CSV, dtype=str, on_bad_lines="skip", engine="python")
         cols = [c for c in [
-            "time","order_no","file_a","file_b","manufacturer","model_no","serial",
+            "time","order_no","file_model","file_serial","manufacturer","model_no","serial",
             "product_no","reg_model","reg_type","dpn","input_power","retail_model_guess"
         ] if c in df.columns]
         return df[cols].tail(10).to_string(index=False)
@@ -107,9 +95,19 @@ def recent_log():
         return f"(could not read CSV: {e})"
 
 def ensure_columns(row):
-    # prepend order_no and keep the rest
+    """
+    Normalizes incoming row keys (file_a/file_b vs file_model/file_serial)
+    and ensures CSV has stable columns.
+    """
+    # map compatibility keys for files
+    if "file_model" not in row and "file_a" in row:
+        row["file_model"] = row.get("file_a", "")
+    if "file_serial" not in row and "file_b" in row:
+        row["file_serial"] = row.get("file_b", "")
+
     cols = [
-        "time","order_no","file_a","file_b",
+        "time","order_no",
+        "file_model","file_serial",
         "manufacturer","model_no","serial",
         "cpu","ram",
         "product_no","reg_model","reg_type","dpn","input_power",
@@ -119,7 +117,7 @@ def ensure_columns(row):
     out.update(row)
     return out, cols
 
-# ---------- Image helpers ----------
+# ---------- Imaging ----------
 def load_fix_exif(p):
     img = Image.open(p).convert("RGB")
     return ImageOps.exif_transpose(img)
@@ -155,7 +153,7 @@ def cv2_clahe_boost(img):
     clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
     cl = clahe.apply(l)
     lab = cv2.merge((cl, a, b))
-    out = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    out = cv2.cvtColor(lab, cv2.COLOR_BGR2RGB)
     blur = cv2.GaussianBlur(out, (0,0), 1.0)
     sharp = cv2.addWeighted(out, 1.4, blur, -0.4, 0)
     rgb = cv2.cvtColor(sharp, cv2.COLOR_BGR2RGB)
@@ -188,14 +186,14 @@ def jpeg_data_url(img, max_side=2400, quality=88):
     return "data:image/jpeg;base64," + b64
 
 # ---------- Regex ----------
-SERIAL_PAT    = re.compile(r"(?:S/N|SN|Service\s*Tag|Serial(?:\s*No\.?)?|Serial\s*Number|CN-)\s*[:#]?\s*([A-Z0-9\-]{5,})", re.I)
-MODELNO_PAT   = re.compile(r"(?:Model\s*No\.?|Model)\s*[:#]?\s*([A-Z0-9\-\._]+)", re.I)
-DPN_PAT       = re.compile(r"\bDP/?N[:\s]*([A-Z0-9\-]+)\b", re.I)
-PN_PAT        = re.compile(r"\b(P/?N|Product\s*No\.?)[:\s]*([A-Z0-9\-\._]+)\b", re.I)
-REGMODEL_PAT  = re.compile(r"\bReg(?:ulatory)?\s*Model[:\s]*([A-Z0-9\-]+)\b", re.I)
-REGTYPE_PAT   = re.compile(r"\bReg(?:ulatory)?\s*Type(?:\s*No\.?)?[:\s]*([A-Z0-9\-]+)\b", re.I)
-INPUT_PAT     = re.compile(r"\b(1[29]\.?\d*V|20V)\s*[-–—]?\s*(\d{1,2}\.\d{1,2}A)\b", re.I)
-SERVICE_TAG_PAT = re.compile(r"\b(?:ST|Service\s*Tag)\s*[:#]?\s*([A-Z0-9]{7})\b", re.I)
+SERIAL_PAT       = re.compile(r"(?:S/N|SN|Service\s*Tag|Serial(?:\s*No\.?)?|Serial\s*Number|CN-)\s*[:#]?\s*([A-Z0-9\-]{5,})", re.I)
+MODELNO_PAT      = re.compile(r"(?:Model\s*No\.?|Model)\s*[:#]?\s*([A-Z0-9\-\._]+)", re.I)
+DPN_PAT          = re.compile(r"\bDP/?N[:\s]*([A-Z0-9\-]+)\b", re.I)
+PN_PAT           = re.compile(r"\b(P/?N|Product\s*No\.?)[:\s]*([A-Z0-9\-\._]+)\b", re.I)
+REGMODEL_PAT     = re.compile(r"\bReg(?:ulatory)?\s*Model[:\s]*([A-Z0-9\-]+)\b", re.I)
+REGTYPE_PAT      = re.compile(r"\bReg(?:ulatory)?\s*Type(?:\s*No\.?)?[:\s]*([A-Z0-9\-]+)\b", re.I)
+INPUT_PAT        = re.compile(r"\b(1[29]\.?\d*V|20V)\s*[-–—]?\s*(\d{1,2}\.\d{1,2}A)\b", re.I)
+SERVICE_TAG_PAT  = re.compile(r"\b(?:ST|Service\s*Tag)\s*[:#]?\s*([A-Z0-9]{7})\b", re.I)
 FAMILY_MODEL_PAT = re.compile(
     r"\b("
     r"Latitude|OptiPlex|Precision|Vostro|XPS|Inspiron|Alienware|Venue|"
@@ -211,9 +209,6 @@ def parse_from_raw_text(norm: dict):
     if not norm.get("model_no"):
         m = MODELNO_PAT.search(raw)
         if m: norm["model_no"] = m.group(1).strip()
-    if not norm.get("serial"):
-        m = SERIAL_PAT.search(raw)
-        if m: norm["serial"] = m.group(1).strip().upper()
     if not norm.get("dpn"):
         m = DPN_PAT.search(raw)
         if m: norm["dpn"] = m.group(1).strip().upper()
@@ -247,7 +242,7 @@ def refine_model_with_family(model_no: str, raw_text: str) -> str:
     return cand
 
 # ---------- models_db helpers ----------
-def _norm(s):  # normalized key for model names
+def _norm(s):
     return re.sub(r"\s+", " ", (s or "").strip()).lower()
 
 def _load_models_db():
@@ -255,40 +250,32 @@ def _load_models_db():
         if os.path.exists(MODELS_DB_PATH):
             with open(MODELS_DB_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            if isinstance(data, list):
-                return data
+            return data if isinstance(data, list) else []
     except Exception as e:
         print("models_db load error:", repr(e))
     return []
 
 def _save_models_db(records):
     os.makedirs(os.path.dirname(MODELS_DB_PATH), exist_ok=True)
-    with open(MODELS_DB_PATH, "w", encoding="utf-8") as f2:
-        json.dump(records, f2, ensure_ascii=False, indent=2)
+    with open(MODELS_DB_PATH, "w", encoding="utf-8") as f:
+        json.dump(records, f, ensure_ascii=False, indent=2)
 
-def db_lookup_specs(manufacturer: str, model_name: str) -> dict:
-    """Return cpu/ram by MODEL ONLY. Manufacturer is ignored for matching."""
-    model_key = _norm(model_name)
-    if not model_key:
-        return {}
-    best = {}
+def db_lookup_specs(_manufacturer_unused: str, model_name: str) -> dict:
+    key = _norm(model_name)
+    if not key: return {}
     for rec in _load_models_db():
         mdl = _norm(rec.get("model_no") or rec.get("model") or "")
         alts = rec.get("alt_names") or []
-        if mdl == model_key or any(_norm(a) == model_key for a in (alts if isinstance(alts, list) else [])):
-            cpu = (rec.get("cpu") or "").strip()
-            ram = (rec.get("ram") or "").strip()
-            if cpu or ram:
-                if cpu: best["cpu"] = cpu
-                if ram: best["ram"] = ram
-                break
-    return best
+        if mdl == key or any(_norm(a) == key for a in (alts if isinstance(alts, list) else [])):
+            out = {}
+            if rec.get("cpu"): out["cpu"] = rec["cpu"].strip()
+            if rec.get("ram"): out["ram"] = rec["ram"].strip()
+            return out
+    return {}
 
 def learn_model_entry(model_no: str, manufacturer: str = "", cpu: str = "", ram: str = ""):
-    """Insert/Update a model in models_db.json keyed by MODEL ONLY (latest wins)."""
     mdl = (model_no or "").strip()
-    if not mdl:
-        return
+    if not mdl: return
     key = _norm(mdl)
     records = _load_models_db()
     idx = None
@@ -301,19 +288,16 @@ def learn_model_entry(model_no: str, manufacturer: str = "", cpu: str = "", ram:
         "model_no": mdl,
         "cpu": (cpu or "").strip(),
         "ram": (ram or "").strip(),
-        "alt_names": rec.get("alt_names", []) if idx is not None else []
+        "alt_names": records[idx].get("alt_names", []) if idx is not None else []
     }
-    if idx is None:
-        records.append(new_rec)
-    else:
-        records[idx] = new_rec  # latest wins
+    if idx is None: records.append(new_rec)
+    else:           records[idx] = new_rec
     _save_models_db(records)
 
-# ---------- LLM spec guess (text) ----------
+# ---------- LLM helpers ----------
 def ai_guess_specs(model_str: str) -> dict:
     model_str = (model_str or "").strip()
-    if not API_KEY or not model_str:
-        return {}
+    if not API_KEY or not model_str: return {}
     for key, v in SPEC_HINTS.items():
         if key.lower() in model_str.lower():
             return {"cpu": v.get("cpu",""), "ram": v.get("ram","")}
@@ -323,23 +307,20 @@ def ai_guess_specs(model_str: str) -> dict:
     if OPENAI_PROJECT: headers["OpenAI-Project"] = OPENAI_PROJECT
     prompt = (
         "You are a hardware spec assistant. Given a laptop/desktop marketing model string, "
-        "respond with a very short JSON object that guesses typical CPU family and RAM default for that model. "
-        "If multiple CPU options exist, mention the generation/options concisely.\n"
-        "{\n  \"cpu\": \"...\",\n  \"ram\": \"...\"\n}\n\n"
+        "respond with a short JSON object guessing typical CPU family and default RAM. "
+        "If multiple CPU options exist, mention concisely.\n"
+        "{ \"cpu\": \"...\", \"ram\": \"...\" }\n"
         f"Model: {model_str}\n"
         "Return ONLY the JSON."
     )
-    body = {"model": MODEL, "messages": [{"role": "user", "content": prompt}], "temperature": 0.1}
+    body = {"model": MODEL, "messages": [{"role":"user","content":prompt}], "temperature": 0.1}
     try:
-        import requests
         r = requests.post(url, headers=headers, json=body, timeout=20)
-        if r.status_code >= 400:
-            return {}
-        jd = r.json()
+        if r.status_code >= 400: return {}
+        jd  = r.json()
         txt = jd["choices"][0]["message"]["content"]
-        m = re.search(r"\{.*\}", txt, re.S)
-        if not m:
-            return {}
+        m   = re.search(r"\{.*\}", txt, re.S)
+        if not m: return {}
         obj = json.loads(m.group(0))
         out = {}
         if isinstance(obj, dict):
@@ -349,34 +330,42 @@ def ai_guess_specs(model_str: str) -> dict:
     except Exception:
         return {}
 
-# ---------- Vision (label/tag) ----------
-def call_openai_label_extract(img_path):
+# ---------- Vision calls ----------
+def _vision_extract(img_path, purpose="model"):
+    """purpose: 'model' or 'serial' — controls prompt/fields we trust."""
     if not API_KEY:
         raise RuntimeError("VISION_API_KEY is not set.")
     import requests
     raw = load_fix_exif(img_path)
     proc = preprocess_for_ocr(raw)
     inv  = inverted_contrast_variant(proc)
-    data_proc = jpeg_data_url(proc, max_side=2400, quality=88)
-    data_inv  = jpeg_data_url(inv,  max_side=2400, quality=88)
-    data_raw  = jpeg_data_url(raw,  max_side=2400, quality=88)
+    data_proc = jpeg_data_url(proc)
+    data_inv  = jpeg_data_url(inv)
+    data_raw  = jpeg_data_url(raw)
 
-    # New: be explicit about white vs dark tags, and SN tokens we care about
-    prompt = (
-        "You are extracting fields from TWO kinds of labels commonly found on computers:\n"
-        "  (1) DARK manufacturing/regulatory label (printed on the bottom cover)\n"
-        "  (2) WHITE service/serial sticker (e.g., 'Service Tag' for DELL)\n\n"
-        "GOAL: Identify Serial/Service Tag reliably. Look specifically for tokens like:\n"
-        "  'SN', 'S/N', 'Serial', 'Serial No', 'Service Tag', 'ST'.\n"
-        "Ignore keyboard keys or marketing stickers.\n\n"
-        "Return STRICT JSON matching this schema:\n"
-        + json.dumps(SCHEMA, indent=2) + "\n\n"
-        "Rules:\n"
-        "- Prefer serials adjacent to SN/Service Tag tokens.\n"
-        "- 'model_no' is the readable marketing or model text.\n"
-        "- Provide a short 'raw_text' dump for regex fallback.\n"
-        "Return ONLY the JSON object."
-    )
+    if purpose == "model":
+        prompt = (
+            "Read the DARK manufacturing/regulatory label or brand imprint.\n"
+            "Goal: Identify manufacturer and model/marketing model from the label text. "
+            "Collect helpful label fields (P/N, DP/N, Reg Model/Type, input power). "
+            "DO NOT extract or infer serial in this step.\n\n"
+            "Return STRICT JSON like:\n" + json.dumps(SCHEMA, indent=2) + "\n"
+            "Rules:\n"
+            "- Leave 'serial' empty.\n"
+            "- 'model_no' should be the readable marketing/model text (e.g., 'Latitude 7410', 'ThinkPad T480').\n"
+            "- Provide a brief 'raw_text' dump for regex fallback.\n"
+            "Return ONLY the JSON."
+        )
+    else:  # serial
+        prompt = (
+            "Read the WHITE service/serial sticker or any clear serial area.\n"
+            "Goal: Extract only the device serial/service tag. Look for tokens like 'SN', 'S/N', 'Serial', 'Service Tag', 'ST'.\n"
+            "Return STRICT JSON like:\n" + json.dumps(SCHEMA, indent=2) + "\n"
+            "Rules:\n"
+            "- Fill ONLY the 'serial' field if found; other fields should remain empty strings.\n"
+            "- Provide 'raw_text' with what you saw around SN tokens.\n"
+            "Return ONLY the JSON."
+        )
 
     url = f"{API_BASE}/chat/completions"
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
@@ -391,7 +380,6 @@ def call_openai_label_extract(img_path):
         ]}],
         "temperature": 0.0
     }
-
     for attempt in range(5):
         try:
             r = requests.post(url, headers=headers, json=payload, timeout=90)
@@ -399,11 +387,22 @@ def call_openai_label_extract(img_path):
             jd = r.json()
             text = jd["choices"][0]["message"]["content"]
             m = re.search(r"\{.*\}", text, re.S)
-            if not m: raise ValueError(f"No JSON found in response: {text[:300]}")
+            if not m: raise ValueError(f"No JSON in vision response: {text[:200]}")
             obj = json.loads(m.group(0))
             norm = {k: (obj.get(k) or "").strip() for k in SCHEMA.keys()}
             norm = parse_from_raw_text(norm)
-            if norm["input_power"]:
+            if purpose == "model":
+                # ensure serial empty
+                norm["serial"] = ""
+                # refine family name
+                norm["model_no"] = refine_model_with_family(norm.get("model_no",""), norm.get("raw_text",""))
+            else:
+                # keep ONLY serial; wipe others
+                serial_found = norm.get("serial","")
+                norm = {k:"" for k in SCHEMA.keys()}
+                norm["serial"] = serial_found
+                norm["raw_text"] = obj.get("raw_text","")
+            if norm.get("input_power"):
                 norm["input_power"] = re.sub(r"\s*[-–—]{1,2}\s*", " ", norm["input_power"]).strip()
             return norm
         except Exception as e:
@@ -412,7 +411,7 @@ def call_openai_label_extract(img_path):
                 time.sleep(2 ** attempt); continue
             raise
 
-# ---------- OEM lookup ----------
+# ---------- OEM helpers ----------
 def _is_dell_service_tag(tag: str) -> bool:
     return bool(re.fullmatch(r"[A-Z0-9]{7}", (tag or "").strip().upper()))
 
@@ -428,9 +427,8 @@ def _lookup_dell_by_tag(tag: str):
     ]
     for url in endpoints:
         try:
-            r = requests.get(url, timeout=LOOKUP_TIMEOUT, headers={"Accept": "application/json"})
-            if r.status_code != 200:
-                continue
+            r = requests.get(url, timeout=LOOKUP_TIMEOUT, headers={"Accept":"application/json"})
+            if r.status_code != 200: continue
             data = r.json()
             if isinstance(data, dict):
                 summaries = data.get("assetSummaries") or data.get("AssetSummaries")
@@ -440,10 +438,8 @@ def _lookup_dell_by_tag(tag: str):
                     if model:
                         out["manufacturer"] = "DELL"
                         out["model_no"] = str(model).strip()
-                        cpu = s0.get("cpu") or s0.get("cpuDescription") or ""
-                        ram = s0.get("memory") or s0.get("ram") or ""
-                        if cpu: out["cpu"] = str(cpu).strip()
-                        if ram: out["ram"] = str(ram).strip()
+                        out["cpu"] = (s0.get("cpu") or s0.get("cpuDescription") or "").strip()
+                        out["ram"] = (s0.get("memory") or s0.get("ram") or "").strip()
                         return out
                 hdr = data.get("AssetHeaderData") or data.get("assetHeaderData")
                 if isinstance(hdr, dict):
@@ -456,101 +452,18 @@ def _lookup_dell_by_tag(tag: str):
             continue
     return out
 
-def _lookup_lenovo_by_serial(sn: str):
-    out = {}
-    sn = (sn or "").strip().upper()
-    if not (ALLOW_LOOKUPS and LENOVO_API_BASE and LENOVO_API_KEY and sn):
-        return out
-    try:
-        import requests
-        r = requests.get(
-            f"{LENOVO_API_BASE}/lookup",
-            params={"serial": sn},
-            headers={"X-API-Key": LENOVO_API_KEY, "Accept":"application/json"},
-            timeout=LOOKUP_TIMEOUT
-        )
-        if r.status_code != 200:
-            return out
-        data = r.json() if r.content else {}
-        if isinstance(data, dict):
-            for k in ("manufacturer","model_no","cpu","ram"):
-                if data.get(k): out[k] = str(data[k]).strip()
-        return out
-    except Exception:
-        return {}
-
-def _lookup_hp_by_serial(sn: str):
-    out = {}
-    sn = (sn or "").strip().upper()
-    if not (ALLOW_LOOKUPS and HP_API_BASE and HP_API_KEY and sn):
-        return out
-    try:
-        import requests
-        r = requests.get(
-            f"{HP_API_BASE}/lookup",
-            params={"serial": sn},
-            headers={"X-API-Key": HP_API_KEY, "Accept":"application/json"},
-            timeout=LOOKUP_TIMEOUT
-        )
-        if r.status_code != 200:
-            return out
-        data = r.json() if r.content else {}
-        if isinstance(data, dict):
-            for k in ("manufacturer","model_no","cpu","ram"):
-                if data.get(k): out[k] = str(data[k]).strip()
-        return out
-    except Exception:
-        return {}
-
 def oem_lookup(serial: str) -> dict:
     sn = (serial or "").strip().upper()
-    if not sn:
-        return {}
+    if not sn: return {}
+    # Dell only here; Lenovo/HP endpoints are optional envs—add same way if needed later.
     if _is_dell_service_tag(sn):
         got = _lookup_dell_by_tag(sn)
-        if got:
-            if (not got.get("cpu") or not got.get("ram")) and got.get("model_no"):
-                guessed = ai_guess_specs(got.get("model_no",""))
-                if guessed.get("cpu"): got["cpu"] = guessed["cpu"]
-                if guessed.get("ram"): got["ram"] = guessed["ram"]
-            return got
-    for f in (_lookup_lenovo_by_serial, _lookup_hp_by_serial):
-        try:
-            got = f(sn)
-            if got:
-                if (not got.get("cpu") or not got.get("ram")) and got.get("model_no"):
-                    guessed = ai_guess_specs(got.get("model_no",""))
-                    if guessed.get("cpu"): got["cpu"] = guessed["cpu"]
-                    if guessed.get("ram"): got["ram"] = guessed["ram"]
-                return got
-        except Exception:
-            pass
+        if got and (not got.get("cpu") or not got.get("ram")) and got.get("model_no"):
+            guess = ai_guess_specs(got["model_no"])
+            if guess.get("cpu"): got["cpu"] = guess["cpu"]
+            if guess.get("ram"): got["ram"] = guess["ram"]
+        return got
     return {}
-
-# ---------- Fuse two pics ----------
-def fuse_pair(a: dict, b: dict) -> dict:
-    # Merge keys; we will still prefer a serial found near tokens
-    out = {k: (a.get(k) or b.get(k) or "") for k in SCHEMA.keys()}
-    combined_raw = " | ".join(filter(None, [a.get("raw_text",""), b.get("raw_text","")]))[:6000]
-
-    # Prefer explicit 'Service Tag' 7-char for DELL, otherwise accept broader SNs
-    st = SERVICE_TAG_PAT.search(combined_raw)
-    service_tag = st.group(1).upper() if st else ""
-    if service_tag:
-        out["serial"] = service_tag
-    elif not out.get("serial"):
-        m = SERIAL_PAT.search(combined_raw)
-        if m: out["serial"] = m.group(1).upper()
-
-    out["model_no"] = refine_model_with_family(out.get("model_no",""), combined_raw)
-
-    if not out.get("retail_model_guess") and (out.get("manufacturer","").lower() == "dell"):
-        rm = (out.get("reg_model") or "").upper()
-        if rm in REG_MODEL_TO_RETAIL:
-            out["retail_model_guess"] = REG_MODEL_TO_RETAIL[rm]
-
-    out["raw_text"] = combined_raw
-    return out
 
 # ---------- Routes ----------
 @app.route("/")
@@ -573,66 +486,263 @@ def selftest():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
+# --- Step 0: Two-photo pair (Photo A + Photo B) ---
 @app.route("/analyze_pair", methods=["POST"])
 def analyze_pair():
-    # Two manufacturing/tag photos, and a sticky order number
+    """
+    Main flow for the 'Analyze' button in index.html.
+    - fileA: Photo A (dark manufacturing label / model brand)
+    - fileB: Photo B (white serial sticker)
+    """
     fA = request.files.get("fileA")
     fB = request.files.get("fileB")
     order_no = (request.form.get("order_no") or "").strip()
-    manual_serial = (request.form.get("manual_serial") or "").strip().upper()
-
     if not fA or not fB:
-        return jsonify({"error":"need both photos"}), 400
+        return jsonify({"error": "missing_files", "detail": "fileA and fileB are required"}), 400
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     nameA = f"{ts}_A_{fA.filename or 'a.jpg'}"
     nameB = f"{ts}_B_{fB.filename or 'b.jpg'}"
-    pA = os.path.join(UPLOADS, nameA); fA.save(pA)
-    pB = os.path.join(UPLOADS, nameB); fB.save(pB)
+    pA = os.path.join(UPLOADS, nameA)
+    pB = os.path.join(UPLOADS, nameB)
+    fA.save(pA)
+    fB.save(pB)
     try:
-        img = load_fix_exif(pA); img.save(pA, "JPEG", quality=90, optimize=True)
-    except Exception: pass
+        imgA = load_fix_exif(pA); imgA.save(pA, "JPEG", quality=90, optimize=True)
+    except Exception:
+        pass
     try:
-        img = load_fix_exif(pB); img.save(pB, "JPEG", quality=90, optimize=True)
-    except Exception: pass
+        imgB = load_fix_exif(pB); imgB.save(pB, "JPEG", quality=90, optimize=True)
+    except Exception:
+        pass
 
-    # Extract tag info from BOTH (tag-first)
+    label = {}
+    serial_info = {}
+    oem = {}
+
+    # Vision: model from Photo A, serial from Photo B
     try:
-        a = call_openai_label_extract(pA)
-        b = call_openai_label_extract(pB)
-        fused = fuse_pair(a, b)
+        label = _vision_extract(pA, purpose="model")
     except Exception as e:
-        print("ANALYZE ERROR:", repr(e)); print(traceback.format_exc())
-        # Even if analysis fails, return a blank row with order_no so user can manually add serial
-        fused = {}
+        print("PAIR MODEL VISION ERROR:", repr(e))
+        label = {}
+    try:
+        serial_info = _vision_extract(pB, purpose="serial")
+    except Exception as e:
+        print("PAIR SERIAL VISION ERROR:", repr(e))
+        serial_info = {}
 
-    # If the user provided a manual serial WITH the photo upload, use it
-    if manual_serial:
-        fused["serial"] = manual_serial
+    manufacturer = (label.get("manufacturer") or "").strip()
+    model_no     = (label.get("model_no") or label.get("retail_model_guess") or "").strip()
 
-    looked = {}
-    # If we do not have a serial at this point, REQUIRE manual serial later
-    found_serial = bool(fused.get("serial"))
-    if found_serial and ALLOW_LOOKUPS:
+    serial = (serial_info.get("serial") or "").strip().upper()
+    if not serial:
+        # fallback to regex on combined raw text
+        raw_all = f"{label.get('raw_text','')} {serial_info.get('raw_text','')}"
+        m = SERVICE_TAG_PAT.search(raw_all) or SERIAL_PAT.search(raw_all)
+        if m:
+            serial = m.group(1).upper().strip()
+
+    cpu = ""
+    ram = ""
+
+    # 1) DB lookup by model (fast, model-first)
+    if model_no:
+        hit = db_lookup_specs(manufacturer, model_no)
+        cpu = hit.get("cpu","") or cpu
+        ram = hit.get("ram","") or ram
+
+    # 2) OEM lookup by serial (fill gaps only, don't override model from label)
+    if serial and ALLOW_LOOKUPS:
         try:
-            looked = oem_lookup(fused["serial"])
+            oem = oem_lookup(serial)
         except Exception as e:
-            print("OEM LOOKUP ERROR:", repr(e))
+            print("PAIR OEM LOOKUP ERROR:", repr(e))
+            oem = {}
+        if not manufacturer and oem.get("manufacturer"):
+            manufacturer = oem["manufacturer"]
+        if not model_no and oem.get("model_no"):
+            model_no = oem["model_no"]
+        if not cpu and oem.get("cpu"):
+            cpu = oem["cpu"]
+        if not ram and oem.get("ram"):
+            ram = oem["ram"]
 
-    # If we couldn't read any serial → blank out most fields (focus on manual Add Serial later)
-    if not found_serial:
-        fused = {}  # force a blank device row except order_no and files
+    # 3) AI guess for cpu/ram if still missing
+    if model_no and (not cpu or not ram):
+        guess = ai_guess_specs(model_no)
+        if not cpu and guess.get("cpu"): cpu = guess["cpu"]
+        if not ram and guess.get("ram"): ram = guess["ram"]
 
-    # Merge looked-up data if present
+    # Do we have any useful device info for the UI?
+    has_any_device = any([
+        manufacturer, model_no, cpu, ram
+    ])
+
+    raw_json = json.dumps({
+        "pair": {
+            "label": label,
+            "serial": serial_info,
+            "oem": oem
+        }
+    }, ensure_ascii=False)
+
     out = {
         "time": datetime.now().isoformat(timespec="seconds"),
         "order_no": order_no,
-        "file_a": nameA, "file_b": nameB,
-        "manufacturer": "",
-        "model_no": "",
+        "file_a": nameA,
+        "file_b": nameB,
+        "manufacturer": manufacturer if has_any_device else "",
+        "model_no": model_no if has_any_device else "",
+        "serial": serial,
+        "cpu": cpu if has_any_device else "",
+        "ram": ram if has_any_device else "",
+        "product_no": label.get("product_no","") if has_any_device else "",
+        "reg_model": label.get("reg_model","") if has_any_device else "",
+        "reg_type": label.get("reg_type","") if has_any_device else "",
+        "dpn": label.get("dpn","") if has_any_device else "",
+        "input_power": label.get("input_power","") if has_any_device else "",
+        "retail_model_guess": label.get("retail_model_guess","") if has_any_device else "",
+        "notes": label.get("notes","") if has_any_device else "",
+        "raw_json": raw_json
+    }
+    return jsonify(out)
+
+# --- Step 1: MODEL photo ---
+@app.route("/analyze_model", methods=["POST"])
+def analyze_model():
+    fModel = request.files.get("file_model")
+    order_no = (request.form.get("order_no") or "").strip()
+    if not fModel:
+        return jsonify({"error":"missing_model_photo"}), 400
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    nameM = f"{ts}_MODEL_{fModel.filename or 'model.jpg'}"
+    pM = os.path.join(UPLOADS, nameM)
+    fModel.save(pM)
+    try:
+        img = load_fix_exif(pM); img.save(pM, "JPEG", quality=90, optimize=True)
+    except Exception:
+        pass
+
+    # Vision: MODEL ONLY
+    extracted = {}
+    try:
+        extracted = _vision_extract(pM, purpose="model")
+    except Exception as e:
+        print("MODEL VISION ERROR:", repr(e))
+        extracted = {}
+
+    manufacturer = extracted.get("manufacturer","")
+    model_no     = extracted.get("model_no","") or extracted.get("retail_model_guess","")
+
+    cpu, ram = "", ""
+    if model_no:
+        hit = db_lookup_specs(manufacturer, model_no)
+        cpu = hit.get("cpu","") or cpu
+        ram = hit.get("ram","") or ram
+        if (not cpu or not ram):
+            guess = ai_guess_specs(model_no)
+            if not cpu and guess.get("cpu"): cpu = guess["cpu"]
+            if not ram and guess.get("ram"): ram = guess["ram"]
+
+    out = {
+        "time": datetime.now().isoformat(timespec="seconds"),
+        "order_no": order_no,
+        "file_model": nameM,
+        "file_serial": "",
+        "manufacturer": manufacturer,
+        "model_no": model_no,
         "serial": "",
-        "cpu": "",
-        "ram": "",
+        "cpu": cpu, "ram": ram,
+        "product_no": extracted.get("product_no",""),
+        "reg_model": extracted.get("reg_model",""),
+        "reg_type": extracted.get("reg_type",""),
+        "dpn": extracted.get("dpn",""),
+        "input_power": extracted.get("input_power",""),
+        "retail_model_guess": extracted.get("retail_model_guess",""),
+        "notes": extracted.get("notes",""),
+        "raw_json": json.dumps({"model_extracted": extracted}, ensure_ascii=False)
+    }
+    return jsonify(out)
+
+# --- Step 2: SERIAL photo (serial only) ---
+@app.route("/analyze_serial", methods=["POST"])
+def analyze_serial():
+    fSerial  = request.files.get("file_serial")
+    order_no = (request.form.get("order_no") or "").strip()
+    if not fSerial:
+        return jsonify({"error":"missing_serial_photo"}), 400
+
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    nameS = f"{ts}_SERIAL_{fSerial.filename or 'serial.jpg'}"
+    pS = os.path.join(UPLOADS, nameS)
+    fSerial.save(pS)
+    try:
+        img = load_fix_exif(pS); img.save(pS, "JPEG", quality=90, optimize=True)
+    except Exception:
+        pass
+
+    extracted = {}
+    try:
+        extracted = _vision_extract(pS, purpose="serial")
+    except Exception as e:
+        print("SERIAL VISION ERROR:", repr(e))
+        extracted = {}
+
+    serial = (extracted.get("serial","") or "").upper().strip()
+
+    out = {
+        "time": datetime.now().isoformat(timespec="seconds"),
+        "order_no": order_no,
+        "file_serial": nameS,
+        "serial": serial,
+        "raw_json": json.dumps({"serial_extracted": extracted}, ensure_ascii=False)
+    }
+    return jsonify(out)
+
+# Manual serial fallback (no photo) — used by "Add Serial No." button
+@app.route("/manual_serial_lookup", methods=["POST"])
+def manual_serial_lookup():
+    data = request.get_json(force=True, silent=True) or {}
+    serial = (data.get("serial") or "").strip().upper()
+    if not serial:
+        return jsonify({"error":"missing_serial"}), 400
+
+    manufacturer = ""
+    model_no = ""
+    cpu = ""
+    ram = ""
+    oem = {}
+
+    if ALLOW_LOOKUPS:
+        try:
+            oem = oem_lookup(serial)
+        except Exception as e:
+            print("MANUAL OEM LOOKUP ERROR:", repr(e))
+            oem = {}
+
+        manufacturer = (oem.get("manufacturer") or "").strip()
+        model_no     = (oem.get("model_no") or "").strip()
+        cpu          = (oem.get("cpu") or "").strip()
+        ram          = (oem.get("ram") or "").strip()
+
+        # If we now know model_no, refine via DB + AI guess
+        if model_no:
+            hit = db_lookup_specs(manufacturer, model_no)
+            if hit.get("cpu"): cpu = hit["cpu"]
+            if hit.get("ram"): ram = hit["ram"]
+            if not cpu or not ram:
+                guess = ai_guess_specs(model_no)
+                if not cpu and guess.get("cpu"): cpu = guess["cpu"]
+                if not ram and guess.get("ram"): ram = guess["ram"]
+
+    resp = {
+        "serial": serial,
+        "manufacturer": manufacturer,
+        "model_no": model_no,
+        "cpu": cpu,
+        "ram": ram,
         "product_no": "",
         "reg_model": "",
         "reg_type": "",
@@ -640,65 +750,16 @@ def analyze_pair():
         "input_power": "",
         "retail_model_guess": "",
         "notes": "",
-        "raw_json": json.dumps({"a":a if 'a' in locals() else {},
-                                "b":b if 'b' in locals() else {},
-                                "fused":fused, "oem":looked}, ensure_ascii=False)
+        "raw_json": json.dumps({"manual_oem": oem}, ensure_ascii=False)
     }
+    return jsonify(resp)
 
-    # If we DID have a serial and something looked up, fill
-    if found_serial:
-        # Preserve serial either from fused or manual
-        out["serial"] = (fused.get("serial") or "").upper()
-        # Fill from OEM lookup if available
-        if looked:
-            out["manufacturer"] = looked.get("manufacturer","")
-            out["model_no"]     = looked.get("model_no","")
-            out["cpu"]          = looked.get("cpu","")
-            out["ram"]          = looked.get("ram","")
-        else:
-            # No OEM data returned; try DB + guessers if we inferred a model from text (rare)
-            if fused.get("model_no"):
-                model_for_db = fused.get("model_no") or fused.get("retail_model_guess")
-                hits = db_lookup_specs("", model_for_db)
-                if hits.get("cpu"): out["cpu"] = hits["cpu"]
-                if hits.get("ram"): out["ram"] = hits["ram"]
-                if not out["manufacturer"]: out["manufacturer"] = fused.get("manufacturer","")
-                if not out["model_no"]:     out["model_no"]     = fused.get("model_no","")
-                if (not out["cpu"] or not out["ram"]) and out["model_no"]:
-                    g = ai_guess_specs(out["model_no"])
-                    if not out["cpu"] and g.get("cpu"): out["cpu"] = g["cpu"]
-                    if not out["ram"] and g.get("ram"): out["ram"] = g["ram"]
-
-    return jsonify(out)
-
-@app.route("/manual_serial_lookup", methods=["POST"])
-def manual_serial_lookup():
-    """
-    Body: { "serial": "..." }
-    Returns: minimal device info by OEM lookup (manufacturer, model_no, cpu, ram) or {}.
-    """
-    data = request.get_json(force=True, silent=True) or {}
-    serial = (data.get("serial") or "").strip().upper()
-    if not serial:
-        return jsonify({"error":"missing_serial"}), 400
-
-    looked = oem_lookup(serial)
-    # If OEM returns nothing, we still reply 200 with {}, so UI can keep prompting
-    out = {
-        "manufacturer": looked.get("manufacturer",""),
-        "model_no": looked.get("model_no",""),
-        "cpu": looked.get("cpu",""),
-        "ram": looked.get("ram",""),
-        "serial": serial
-    }
-    return jsonify(out)
-
+# Confirm/save + learn (model-only de-dupe)
 @app.route("/confirm_row", methods=["POST"])
 def confirm_row():
     row = request.get_json(force=True, silent=True) or {}
     flat, cols = ensure_columns(row)
 
-    # 1) Save to scans.csv (audit trail — duplicates allowed here)
     pd.DataFrame([flat], columns=cols).to_csv(
         DATA_CSV,
         mode=("a" if os.path.exists(DATA_CSV) else "w"),
@@ -706,7 +767,6 @@ def confirm_row():
         index=False
     )
 
-    # 2) Learn/update models_db.json by MODEL ONLY (latest wins)
     model_no = (row.get("model_no") or row.get("retail_model_guess") or "").strip()
     manufacturer = (row.get("manufacturer") or "").strip()
     cpu = (row.get("cpu") or "").strip()
@@ -716,7 +776,7 @@ def confirm_row():
 
     return jsonify({"ok": True, "saved": flat.get("time","")})
 
-# ===== Upload DB page (GET) — inline fallback =====
+# ===== Upload DB page (unchanged) =====
 INLINE_UPLOAD_DB_HTML = """<!doctype html>
 <html><head><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Upload Model Database (Fallback)</title>
@@ -770,27 +830,13 @@ def upload_db_page():
     except TemplateNotFound:
         return INLINE_UPLOAD_DB_HTML
 
-# ===== Upload DB builder =====
 @app.route("/upload-db", methods=["POST"])
 def upload_db_post():
-    """
-    Excel/CSV → data/models_db.json
-    Columns (case-insensitive; aliases ok):
-      - manufacturer
-      - model / model_no     <-- DEDUPE KEY (model only; manufacturer ignored)
-      - cpu
-      - ram
-      - alt_names (optional; comma-separated)
-    Latest row for the same model wins.
-    """
     f = request.files.get("file")
-    if not f:
-        return jsonify({"error": "no_file"}), 400
-
+    if not f: return jsonify({"error":"no_file"}), 400
     name = (f.filename or "").lower()
     if not (name.endswith(".xlsx") or name.endswith(".csv")):
-        return jsonify({"error": "unsupported_file_type"}), 400
-
+        return jsonify({"error":"unsupported_file_type"}), 400
     try:
         if name.endswith(".xlsx"):
             df = pd.read_excel(f, engine="openpyxl")
@@ -802,19 +848,16 @@ def upload_db_post():
         df.columns = [alias.get(c, c) for c in df.columns]
 
         if "model_no" not in df.columns:
-            return jsonify({"error":"missing_column", "detail":"model/model_no"}), 400
+            return jsonify({"error":"missing_column","detail":"model/model_no"}), 400
         if "manufacturer" not in df.columns:
             df["manufacturer"] = ""
         for c in ["cpu","ram","alt_names"]:
-            if c not in df.columns:
-                df[c] = ""
+            if c not in df.columns: df[c] = ""
 
-        # Build dict keyed by MODEL ONLY (normalized). Latest row wins.
         latest_by_model = {}
         for _, row in df.iterrows():
             mdl = str(row.get("model_no") or "").strip()
-            if not mdl:
-                continue
+            if not mdl: continue
             key = _norm(mdl)
             latest_by_model[key] = {
                 "manufacturer": str(row.get("manufacturer") or "").strip(),
@@ -826,21 +869,17 @@ def upload_db_post():
 
         out = list(latest_by_model.values())
 
-        # Backup old JSON
         backup_path = ""
         if os.path.exists(MODELS_DB_PATH):
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
             backup_path = MODELS_DB_PATH.replace(".json", f".{ts}.bak.json")
             shutil.copy2(MODELS_DB_PATH, backup_path)
 
-        # Save new JSON
         _save_models_db(out)
-
         return jsonify({"ok": True, "count": len(out), "path": MODELS_DB_PATH, "backup": backup_path or "(none)"})
     except Exception as e:
-        print("UPLOAD-DB ERROR:", repr(e))
-        print(traceback.format_exc())
-        return jsonify({"error":"build_failed", "detail": str(e)}), 400
+        print("UPLOAD-DB ERROR:", repr(e)); print(traceback.format_exc())
+        return jsonify({"error":"build_failed","detail":str(e)}), 400
 
 @app.route("/whereami")
 def whereami():

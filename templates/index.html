@@ -98,6 +98,12 @@
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
         <button id="resetBtn"   type="button">Reset</button>
+
+        <!-- NEW: model-only / serial-only buttons -->
+        <button id="analyzeModelOnlyBtn" type="button">Analyze Model Only (Photo A)</button>
+        <button id="analyzeSerialOnlyBtn" type="button">Analyze Serial Only (Photo B)</button>
+        <!-- /NEW -->
+
         <button id="analyzeBtn" type="button" class="primary">Analyze</button>
       </div>
       <div class="hint" id="statusMsg" style="margin-top:8px"></div>
@@ -280,7 +286,8 @@
             const payload = {
               time: j.time,
               order_no: tdOrder.textContent || '',
-              file_a: j.file_a, file_b: j.file_b,
+              file_a: j.file_a || '', 
+              file_b: j.file_b || '',
               manufacturer: inpMfr.value.trim(),
               model_no:     inpModel.value.trim(),
               serial:       (inpSN.value || '').trim().toUpperCase(),
@@ -362,7 +369,6 @@
               status.textContent = 'No OEM data found. Check the serial.';
               return;
             }
-            // Build a "row payload" so we can reuse setReady
             const merged = Object.assign({}, jBase, {
               manufacturer: j.manufacturer || '',
               model_no: j.model_no || '',
@@ -370,28 +376,18 @@
               ram: j.ram || '',
               serial: j.serial || s
             });
-            tdSN.textContent = ''; // clear static cell
-            // Now render inputs with data and confirm action
-            tr.classList.add('row-ghost'); // briefly, then switched by setReady
-            const fake = Object.assign({}, merged);
-            // mimic server shape for setReady()
-            setTimeout(()=> apiSetReady(fake), 0);
+
+            tr.classList.add('row-ghost');
+            setTimeout(()=> obj.setReady(merged), 0);
           }catch(e){
             addBtn.disabled = false;
             status.textContent = 'Lookup failed: ' + e.message;
           }
         });
 
-        function apiSetReady(j){
-          // this wraps setReady with a minimal object
-          obj.setReady(j);
-        }
-
         const obj = { setReady: null };
         obj.setReady = (j)=> {
-          // Reuse the shared setReady implementation by reconstructing
           tdAct.innerHTML = '';
-          // Build editable cells:
           tdMfr.innerHTML  = ''; const inpMfr   = inputCell(j.manufacturer || '');
           tdModel.innerHTML= ''; const inpModel = inputCell((j.model_no || j.retail_model_guess || ''));
           tdSN.innerHTML   = ''; const inpSN    = inputCell(j.serial || '', 'Serial / Service Tag');
@@ -412,7 +408,8 @@
               const payload = {
                 time: jBase.time,
                 order_no: tdOrder.textContent || '',
-                file_a: jBase.file_a, file_b: jBase.file_b,
+                file_a: jBase.file_a || '',
+                file_b: jBase.file_b || '',
                 manufacturer: inpMfr.value.trim(),
                 model_no:     inpModel.value.trim(),
                 serial:       (inpSN.value || '').trim().toUpperCase(),
@@ -451,7 +448,6 @@
           tdAct.appendChild(btn);
         };
 
-        // Put a faint hint in the row cells to show it's blank, awaiting serial
         tdMfr.textContent = '—';
         tdModel.textContent = '—';
         tdSN.textContent = '(waiting)';
@@ -515,6 +511,86 @@
     setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
   }
 
+  // ---- NEW: model-only flow (Photo A) ----
+  async function analyzeModelOnly() {
+    try{
+      let fileA = byId('fileA'); if(!fileA) fileA = rebuildBox('boxA','fileA');
+      const f = fileA.files && fileA.files[0];
+      if(!f){ setStatus("Add Photo A (model/brand) first.", true); return; }
+
+      const orderNo = (byId('orderInput').value || '').trim();
+
+      const row = addPendingRow(orderNo);
+      row.setWorking();
+
+      // reset pickers but keep order no sticky
+      hardResetUI();
+      byId('orderInput').value = orderNo;
+      setStatus("Queued. You can add the next device while this analyzes.");
+
+      const fd = new FormData();
+      fd.append('file_model', f);
+      if (orderNo) fd.append('order_no', orderNo);
+
+      const r = await fetch('/analyze_model', { method:'POST', body: fd });
+      const j = await r.json().catch(()=> ({}));
+      if(!r.ok) throw new Error((j && (j.detail||j.error)) || `HTTP ${r.status}`);
+
+      const shaped = Object.assign({}, j, { file_a: j.file_model || '', file_b: j.file_serial || '' });
+      row.setReady(shaped);
+      setStatus("Model ready. Now add Serial (Analyze Serial Only) or type it and Confirm.");
+    }catch(e){
+      setStatus("Model analyze failed: " + e.message, true);
+      const row = addPendingRow(byId('orderInput').value || '');
+      row.setFailed(e.message);
+    }
+  }
+
+  // ---- NEW: serial-only flow (Photo B) ----
+  async function analyzeSerialOnly() {
+    try{
+      let fileB = byId('fileB'); if(!fileB) fileB = rebuildBox('boxB','fileB');
+      const f = fileB.files && fileB.files[0];
+      if(!f){ setStatus("Add Photo B (serial sticker) first.", true); return; }
+
+      const orderNo = (byId('orderInput').value || '').trim();
+
+      const rows = Array.from(byId('tbody').querySelectorAll('tr'));
+      const last = rows[rows.length - 1];
+      if(!last){
+        setStatus("No row exists yet. Run Analyze Model Only (Photo A) first.", true);
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('file_serial', f);
+      if (orderNo) fd.append('order_no', orderNo);
+
+      const r = await fetch('/analyze_serial', { method:'POST', body: fd });
+      const j = await r.json().catch(()=> ({}));
+      if(!r.ok) throw new Error((j && (j.detail||j.error)) || `HTTP ${r.status}`);
+
+      const tdList = last.querySelectorAll('td');
+      const serialCell = tdList && tdList[4];
+      if(serialCell){
+        const input = serialCell.querySelector('input.cellInput');
+        if(input){
+          input.value = (j.serial || '').toUpperCase();
+          setStatus(j.serial ? "Serial captured." : "Could not read serial — type it and Confirm.");
+        }else{
+          setStatus("Serial read. If it isn't visible, type it manually and Confirm.", true);
+        }
+      }else{
+        setStatus("Serial read but table structure not found. Type it manually.", true);
+      }
+
+      // reset only Photo B so you can rapidly scan next sticker
+      rebuildBox('boxB','fileB');
+    }catch(e){
+      setStatus("Serial analyze failed: " + e.message, true);
+    }
+  }
+
   window.addEventListener('DOMContentLoaded', () => {
     hardResetUI();
     const analyzeBtn    = byId('analyzeBtn');
@@ -522,9 +598,16 @@
     const downloadBtn   = byId('downloadCsvBtn');
     const orderInput    = byId('orderInput');
 
+    const analyzeModelOnlyBtn  = byId('analyzeModelOnlyBtn');
+    const analyzeSerialOnlyBtn = byId('analyzeSerialOnlyBtn');
+
     resetBtn.addEventListener('click', hardResetUI);
     downloadBtn.addEventListener('click', tableToCSV);
 
+    analyzeModelOnlyBtn.addEventListener('click', analyzeModelOnly);
+    analyzeSerialOnlyBtn.addEventListener('click', analyzeSerialOnly);
+
+    // Your original pair flow remains unchanged
     analyzeBtn.addEventListener('click', async () => {
       try{
         const { fileA, fileB } = getFilesSafe();
@@ -540,7 +623,6 @@
         const row = addPendingRow(orderNo);
         row.setWorking();
 
-        // Reset inputs so you can move to the next device immediately
         hardResetUI();
         orderInput.value = orderNo; // keep sticky
         setStatus("Queued. You can add the next device while this analyzes.");
@@ -554,11 +636,9 @@
         const j = await r.json().catch(()=> ({}));
         if(!r.ok){ throw new Error((j && (j.detail||j.error)) || `HTTP ${r.status}`); }
 
-        // If server returned a row with no serial/manufacturer/model, show "Add serial no."
         const hasSerial = !!(j && j.serial);
         const hasAnyDevice = (j && (j.manufacturer || j.model_no || j.cpu || j.ram));
         if (!hasSerial && !hasAnyDevice) {
-          // minimal base for confirm later after manual lookup
           const base = Object.assign({
             time: j.time,
             order_no: j.order_no || orderNo,
@@ -588,3 +668,4 @@
 </script>
 </body>
 </html>
+
