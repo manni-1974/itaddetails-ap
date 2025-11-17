@@ -2,8 +2,9 @@
 # - Frontend: posts to /analyze_pair with fileA + fileB + order_no
 # - Backend:
 #     /analyze_pair   → reads model from photo A, serial from photo B (robust to failures)
+#                      and logs a provisional row into scans.csv.
 #     /manual_serial_lookup → OEM lookup by serial (Dell only for now)
-#     /confirm_row    → logs to scans.csv and learns into data/models_db.json
+#     /confirm_row    → updates/creates row in scans.csv and learns into data/models_db.json
 #     /view-scans     → view scans.csv in browser (HTML table, last 200 rows)
 #     /view-models-db → view models_db.json in browser
 #
@@ -200,7 +201,7 @@ MODELNO_PAT      = re.compile(r"(?:Model\s*No\.?|Model)\s*[:#]?\s*([A-Z0-9\-\._]
 DPN_PAT          = re.compile(r"\bDP/?N[:\s]*([A-Z0-9\-]+)\b", re.I)
 PN_PAT           = re.compile(r"\b(P/?N|Product\s*No\.?)[:\s]*([A-Z0-9\-\._]+)\b", re.I)
 REGMODEL_PAT     = re.compile(r"\bReg(?:ulatory)?\s*Model[:\s]*([A-Z0-9\-]+)\b", re.I)
-REGTYPE_PAT     = re.compile(r"\bReg(?:ulatory)?\s*Type(?:\s*No\.?)?[:\s]*([A-Z0-9\-]+)\b", re.I)
+REGTYPE_PAT      = re.compile(r"\bReg(?:ulatory)?\s*Type(?:\s*No\.?)?[:\s]*([A-Z0-9\-]+)\b", re.I)
 INPUT_PAT        = re.compile(r"\b(1[29]\.?\d*V|20V)\s*[-–—]?\s*(\d{1,2}\.\d{1,2}A)\b", re.I)
 SERVICE_TAG_PAT  = re.compile(r"\b(?:ST|Service\s*Tag)\s*[:#]?\s*([A-Z0-9]{7})\b", re.I)
 FAMILY_MODEL_PAT = re.compile(
@@ -553,6 +554,9 @@ def analyze_pair():
       - order_no: optional
     Matches your current index.html JS.
     Always returns JSON; if vision fails, fields may be blank.
+
+    NEW: also logs a provisional row into scans.csv so /view-scans updates
+    right after Analyze, before Confirm.
     """
     try:
         fA = request.files.get("fileA")
@@ -645,6 +649,19 @@ def analyze_pair():
             }, ensure_ascii=False)
         }
 
+        # NEW: log a provisional row into scans.csv
+        flat, cols = ensure_columns(out)
+        try:
+            df = pd.DataFrame([flat], columns=cols)
+            df.to_csv(
+                DATA_CSV,
+                mode=("a" if os.path.exists(DATA_CSV) else "w"),
+                header=not os.path.exists(DATA_CSV),
+                index=False
+            )
+        except Exception as e:
+            print("ANALYZE_PAIR CSV WRITE ERROR:", repr(e), flush=True)
+
         return jsonify(out)
 
     except Exception as e:
@@ -683,16 +700,51 @@ def manual_serial_lookup():
 
 @app.route("/confirm_row", methods=["POST"])
 def confirm_row():
+    """
+    Confirms a row from the UI table.
+
+    NEW behavior:
+      - If scans.csv already has a row with the same 'time', we UPDATE that row.
+      - Otherwise, we APPEND a new row.
+      - Then we learn into models_db.json.
+    """
     row = request.get_json(force=True, silent=True) or {}
     flat, cols = ensure_columns(row)
+    row_time = flat.get("time", "")
 
-    # Append to scans.csv
-    pd.DataFrame([flat], columns=cols).to_csv(
-        DATA_CSV,
-        mode=("a" if os.path.exists(DATA_CSV) else "w"),
-        header=not os.path.exists(DATA_CSV),
-        index=False
-    )
+    try:
+        if os.path.exists(DATA_CSV):
+            df = pd.read_csv(DATA_CSV, dtype=str, on_bad_lines="skip", engine="python")
+
+            if "time" in df.columns and row_time:
+                mask = df["time"] == row_time
+                if mask.any():
+                    # Update existing row
+                    for c in cols:
+                        if c in df.columns:
+                            df.loc[mask, c] = flat.get(c, "")
+                        else:
+                            # add missing column to df, then set
+                            df[c] = ""
+                            df.loc[mask, c] = flat.get(c, "")
+                else:
+                    # Append if no matching time
+                    df = pd.concat([df, pd.DataFrame([flat], columns=cols)], ignore_index=True)
+            else:
+                # No time column or no time value: just append
+                df = pd.concat([df, pd.DataFrame([flat], columns=cols)], ignore_index=True)
+
+            df.to_csv(DATA_CSV, index=False)
+        else:
+            # First row ever: create CSV
+            pd.DataFrame([flat], columns=cols).to_csv(
+                DATA_CSV,
+                mode="w",
+                header=True,
+                index=False
+            )
+    except Exception as e:
+        print("CONFIRM_ROW CSV WRITE ERROR:", repr(e), flush=True)
 
     # Learn into models_db.json keyed by model_no
     model_no = (row.get("model_no") or row.get("retail_model_guess") or "").strip()
@@ -733,7 +785,7 @@ def view_scans():
             "<!doctype html><html><body style='font-family:system-ui;background:#0b0f17;color:#e9eef7;padding:20px'>"
             "<h2>scans.csv not found.</h2>"
             f"<p>Expected path: <code>{DATA_CSV}</code></p>"
-            "<p>It is created when you confirm the first row.</p>"
+            "<p>It is created when you confirm or analyze the first row.</p>"
             "</body></html>"
         )
     try:
