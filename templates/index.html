@@ -67,13 +67,9 @@
       <div class="small">
         Provide TWO photos of manufacturing/service tags (dark label + white sticker).
         The AI reads SN/Service Tag and uses OEM APIs. If unreadable, the row is blank and you can click <b>Add Serial No.</b>.
-        Your progress for a given <b>Order No.</b> is saved in the backend and can be reloaded even after refresh.
       </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-      <a class="linkbtn" href="/scan" target="_blank">Phone Camera Page</a>
-      <a class="linkbtn" href="/upload-db">Upload DB</a>
-    </div>
+    <div><a class="linkbtn" href="/upload-db">Upload DB</a></div>
   </div>
 
   <div class="row" id="controlsRow">
@@ -97,19 +93,13 @@
 
     <div class="card stack" style="min-width:280px">
       <div class="stack">
-        <label for="orderInput" style="font-size:13px;color:#9fb0c7">Order No. (sticky / job ID)</label>
+        <label for="orderInput" style="font-size:13px;color:#9fb0c7">Order No. (sticky)</label>
         <input id="orderInput" type="text" placeholder="e.g., 2025-IF-Ohio-Load-7" autocomplete="off">
       </div>
-
-      <div style="margin-top:6px;">
-        <button id="openPhoneBtn" type="button">Open Phone Link for This Order</button>
-        <div class="hint">Uses the current Order No. in a /scan page so your phone uploads appear in this job.</div>
-      </div>
-
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
         <button id="resetBtn"   type="button">Reset</button>
 
-        <!-- model-only / serial-only buttons -->
+        <!-- Model-only / serial-only buttons -->
         <button id="analyzeModelOnlyBtn" type="button">Analyze Model Only (Photo A)</button>
         <button id="analyzeSerialOnlyBtn" type="button">Analyze Serial Only (Photo B)</button>
 
@@ -189,6 +179,13 @@
 
   let rowCount = 0;
 
+  // NEW: track rows by 'time' so we don't duplicate when syncing from server
+  const rowByTime = new Map();
+  function registerRowTime(time, tr){
+    if(!time) return;
+    rowByTime.set(time, tr);
+  }
+
   function makeStatusTag(kind, text){
     const span = document.createElement('span');
     span.className = 'tag ' + kind;
@@ -233,7 +230,6 @@
     const tr = document.createElement('tr');
     tr.className = 'row-ghost';
 
-    // First cell: red X + number
     const tdIdx  = document.createElement('td'); tdIdx.className = 'idxcol';
     const del = makeDeleteButton(tr);
     const numSpan = document.createElement('span'); numSpan.className = 'rownum'; numSpan.textContent = rowCount;
@@ -295,8 +291,8 @@
             const payload = {
               time: j.time,
               order_no: tdOrder.textContent || '',
-              file_a: j.file_a || j.file_model || j.file || '',
-              file_b: j.file_b || j.file_serial || '',
+              file_a: j.file_a || '',
+              file_b: j.file_b || '',
               manufacturer: inpMfr.value.trim(),
               model_no:     inpModel.value.trim(),
               serial:       (inpSN.value || '').trim().toUpperCase(),
@@ -321,6 +317,9 @@
             tdAct.innerHTML = '';
             tdAct.appendChild(makeStatusTag('ready','Saved'));
             setStatus('Saved. You can keep adding laptops.');
+
+            // Track this row by its time so syncFromServer doesn't duplicate
+            registerRowTime(j.time, tr);
           }catch(e){
             tdAct.innerHTML = '';
             const fail = makeStatusTag('fail','Save failed');
@@ -333,6 +332,9 @@
           }
         });
         tdAct.appendChild(btn);
+
+        // When we first setReady from Analyze or sync, also register
+        if (j.time) registerRowTime(j.time, tr);
       },
       setNeedsSerial(jBase){
         tr.classList.remove('row-ghost');
@@ -360,6 +362,8 @@
         inline.appendChild(addBtn);
         inline.appendChild(status);
         tdAct.appendChild(inline);
+
+        const obj = { setReady: null };
 
         addBtn.addEventListener('click', async ()=>{
           const s = normalizeSerial(serialBox.value);
@@ -394,7 +398,6 @@
           }
         });
 
-        const obj = { setReady: null };
         obj.setReady = (j)=>{
           tdAct.innerHTML = '';
           tdMfr.innerHTML  = ''; const inpMfr   = inputCell(j.manufacturer || '');
@@ -443,6 +446,8 @@
               tdAct.innerHTML = '';
               tdAct.appendChild(makeStatusTag('ready','Saved'));
               setStatus('Saved. You can keep adding laptops.');
+
+              registerRowTime(jBase.time, tr);
             }catch(e){
               tdAct.innerHTML = '';
               const fail = makeStatusTag('fail','Save failed');
@@ -455,6 +460,8 @@
             }
           });
           tdAct.appendChild(btn);
+
+          registerRowTime(jBase.time, tr);
         };
 
         tdMfr.textContent = '—';
@@ -520,57 +527,7 @@
     setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
   }
 
-  // ---- NEW: load existing rows for a job/order_no from backend ----
-  async function loadJobRows(orderNo){
-    try{
-      if(!orderNo){ return; }
-      const r = await fetch('/job-rows?order_no='+encodeURIComponent(orderNo));
-      if(!r.ok){
-        const txt = await r.text();
-        setStatus('Could not load existing rows: HTTP '+r.status, true);
-        return;
-      }
-      const rows = await r.json();
-      const tbody = byId('tbody');
-      tbody.innerHTML = '';
-      rowCount = 0;
-
-      if(!Array.isArray(rows) || !rows.length){
-        setStatus('No rows yet for '+orderNo+'. Start scanning.', false);
-        return;
-      }
-      rows.forEach(rec=>{
-        const j = {
-          time: rec.time || '',
-          order_no: rec.order_no || orderNo,
-          file_a: rec.file_a || rec.file_model || rec.file || '',
-          file_b: rec.file_b || rec.file_serial || '',
-          file_model: rec.file_model || '',
-          file_serial: rec.file_serial || '',
-          manufacturer: rec.manufacturer || '',
-          model_no: rec.model_no || rec.model || '',
-          serial: rec.serial || '',
-          cpu: rec.cpu || '',
-          ram: rec.ram || '',
-          product_no: rec.product_no || '',
-          reg_model: rec.reg_model || '',
-          reg_type: rec.reg_type || '',
-          dpn: rec.dpn || '',
-          input_power: rec.input_power || '',
-          retail_model_guess: rec.retail_model_guess || '',
-          notes: rec.notes || '',
-          raw_json: rec.raw_json || ''
-        };
-        const row = addPendingRow(j.order_no);
-        row.setReady(j);
-      });
-      setStatus('Loaded '+rows.length+' rows for '+orderNo+'.');
-    }catch(e){
-      setStatus('Could not load existing rows: '+e.message, true);
-    }
-  }
-
-  // ---- model-only flow (Photo A) ----
+  // ---- Model-only flow (Photo A) ----
   async function analyzeModelOnly() {
     try{
       let fileA = byId('fileA'); if(!fileA) fileA = rebuildBox('boxA','fileA');
@@ -578,14 +535,10 @@
       if(!f){ setStatus("Add Photo A (model/brand) first.", true); return; }
 
       const orderNo = (byId('orderInput').value || '').trim();
-      if(orderNo){
-        try{ localStorage.setItem('currentOrderNo', orderNo); }catch(_){}
-      }
 
       const row = addPendingRow(orderNo);
       row.setWorking();
 
-      // reset pickers but keep order no sticky
       hardResetUI();
       byId('orderInput').value = orderNo;
       setStatus("Queued. You can add the next device while this analyzes.");
@@ -608,7 +561,7 @@
     }
   }
 
-  // ---- serial-only flow (Photo B) ----
+  // ---- Serial-only flow (Photo B) ----
   async function analyzeSerialOnly() {
     try{
       let fileB = byId('fileB'); if(!fileB) fileB = rebuildBox('boxB','fileB');
@@ -616,9 +569,6 @@
       if(!f){ setStatus("Add Photo B (serial sticker) first.", true); return; }
 
       const orderNo = (byId('orderInput').value || '').trim();
-      if(orderNo){
-        try{ localStorage.setItem('currentOrderNo', orderNo); }catch(_){}
-      }
 
       const rows = Array.from(byId('tbody').querySelectorAll('tr'));
       const last = rows[rows.length - 1];
@@ -649,10 +599,54 @@
         setStatus("Serial read but table structure not found. Type it manually.", true);
       }
 
-      // reset only Photo B so you can rapidly scan next sticker
       rebuildBox('boxB','fileB');
     }catch(e){
       setStatus("Serial analyze failed: " + e.message, true);
+    }
+  }
+
+  // NEW: pull rows from server scans.csv so desktop sees phone scans
+  async function syncFromServer(){
+    try{
+      const r = await fetch('/api/scans');
+      const j = await r.json().catch(()=> ({}));
+      if(!r.ok || !j || !Array.isArray(j.rows)) return;
+      const rows = j.rows.slice().sort((a,b)=>{
+        return (a.time || '').localeCompare(b.time || '');
+      });
+
+      for(const rec of rows){
+        const t = rec.time || '';
+        if(!t || rowByTime.has(t)) continue; // already in table
+
+        const orderNo = rec.order_no || '';
+
+        const row = addPendingRow(orderNo);
+        // Immediately turn this "pending" row into a ready row with server data
+        const shaped = {
+          time: t,
+          order_no: orderNo,
+          file_a: rec.file_a || rec.file_model || rec.file || '',
+          file_b: rec.file_b || rec.file_serial || '',
+          manufacturer: rec.manufacturer || '',
+          model_no: rec.model_no || rec.model || '',
+          serial: rec.serial || '',
+          cpu: rec.cpu || '',
+          ram: rec.ram || '',
+          product_no: rec.product_no || '',
+          reg_model: rec.reg_model || '',
+          reg_type: rec.reg_type || '',
+          dpn: rec.dpn || '',
+          input_power: rec.input_power || '',
+          retail_model_guess: rec.retail_model_guess || '',
+          notes: rec.notes || '',
+          raw_json: rec.raw_json || ''
+        };
+        row.setReady(shaped);
+        registerRowTime(t, row.tr);
+      }
+    }catch(e){
+      console.warn('syncFromServer failed', e);
     }
   }
 
@@ -662,7 +656,6 @@
     const resetBtn      = byId('resetBtn');
     const downloadBtn   = byId('downloadCsvBtn');
     const orderInput    = byId('orderInput');
-    const openPhoneBtn  = byId('openPhoneBtn');
 
     const analyzeModelOnlyBtn  = byId('analyzeModelOnlyBtn');
     const analyzeSerialOnlyBtn = byId('analyzeSerialOnlyBtn');
@@ -673,41 +666,6 @@
     analyzeModelOnlyBtn.addEventListener('click', analyzeModelOnly);
     analyzeSerialOnlyBtn.addEventListener('click', analyzeSerialOnly);
 
-    // Persist current Order No. in localStorage and reload rows for that job on refresh
-    try{
-      const savedOrder = localStorage.getItem('currentOrderNo') || '';
-      if(savedOrder){
-        orderInput.value = savedOrder;
-        loadJobRows(savedOrder);
-      }
-    }catch(_){}
-
-    orderInput.addEventListener('change', ()=>{
-      const v = (orderInput.value || '').trim();
-      try{ localStorage.setItem('currentOrderNo', v); }catch(_){}
-      if(v){
-        loadJobRows(v);
-      }else{
-        byId('tbody').innerHTML = '';
-        rowCount = 0;
-        setStatus('');
-      }
-    });
-
-    if(openPhoneBtn){
-      openPhoneBtn.addEventListener('click', ()=>{
-        const orderNo = (orderInput.value || '').trim();
-        if(!orderNo){
-          setStatus('Enter an Order No. first so the phone uploads attach to the right job.', true);
-          return;
-        }
-        try{ localStorage.setItem('currentOrderNo', orderNo); }catch(_){}
-        const url = '/scan?order_no='+encodeURIComponent(orderNo);
-        window.open(url, '_blank');
-      });
-    }
-
-    // Original pair flow
     analyzeBtn.addEventListener('click', async () => {
       try{
         const { fileA, fileB } = getFilesSafe();
@@ -716,9 +674,6 @@
           return;
         }
         const orderNo = (orderInput.value || '').trim();
-        if(orderNo){
-          try{ localStorage.setItem('currentOrderNo', orderNo); }catch(_){}
-        }
 
         const fa = fileA.files[0];
         const fb = fileB.files[0];
@@ -727,7 +682,7 @@
         row.setWorking();
 
         hardResetUI();
-        orderInput.value = orderNo; // keep sticky
+        orderInput.value = orderNo;
         setStatus("Queued. You can add the next device while this analyzes.");
 
         const fd = new FormData();
@@ -766,6 +721,11 @@
         row.setFailed(e.message);
       }
     });
+
+    // Initial sync from server (so if phone already scanned, desktop sees it)
+    syncFromServer();
+    // Periodic sync so desktop watches for new phone scans
+    setInterval(syncFromServer, 5000);
   });
 })();
 </script>

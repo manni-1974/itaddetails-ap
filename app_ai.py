@@ -1,18 +1,13 @@
-# app_ai.py — Two-photo /analyze_pair flow + model repository + scans viewer
+# app_ai.py — Two-photo /analyze_pair flow + model repository + scans viewer + JSON API
 # - Frontend: posts to /analyze_pair with fileA + fileB + order_no
 # - Backend:
-#     /analyze_pair   → reads model from photo A, serial from photo B (robust to failures)
-#                      and logs a provisional row into scans.csv.
-#     /analyze_model  → model-only (Photo A)
-#     /analyze_serial → serial-only (Photo B)
+#     /analyze_pair    → reads model from photo A, serial from photo B (robust to failures)
+#                        and logs a provisional row into scans.csv.
 #     /manual_serial_lookup → OEM lookup by serial (Dell only for now)
-#     /confirm_row    → updates/creates row in scans.csv and learns into data/models_db.json
-#     /view-scans     → view scans.csv in browser (HTML table, last 200 rows)
-#     /view-models-db → view models_db.json in browser
-#     /job-rows       → JSON rows for a given order_no (used to repopulate UI)
-#     /scan           → phone camera page (fallback HTML if no template)
-#
-# Your templates/index.html is updated separately (see below).
+#     /confirm_row     → updates/creates row in scans.csv and learns into data/models_db.json
+#     /view-scans      → view scans.csv in browser (HTML table, last 200 rows)
+#     /view-models-db  → view models_db.json in browser
+#     /api/scans       → JSON API: last 200 rows of scans.csv (for phone/desktop sync)
 
 import os, re, io, json, time, base64, traceback, shutil
 from datetime import datetime
@@ -96,7 +91,6 @@ def recent_log():
         return "(no scans yet)"
     try:
         df = pd.read_csv(DATA_CSV, dtype=str, on_bad_lines="skip", engine="python")
-        # Show a reasonable subset of columns if they exist
         cols_preferred = [
             "time","order_no",
             "file_a","file_b",            # new
@@ -152,7 +146,6 @@ def pillow_contrast_boost(img):
     return g.convert("RGB")
 
 def cv2_clahe_boost(img):
-    # Standard CLAHE contrast, then slight sharpening
     bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
     h, w = bgr.shape[:2]
     pad = max(2, int(min(h, w) * 0.01))
@@ -192,7 +185,7 @@ def jpeg_data_url(img, max_side=2400, quality=88):
     w, h = img.size
     scale = min(1.0, float(max_side)/max(w, h))
     if scale < 1.0:
-        img = img.resize((int(w*scale)), int(h*scale), Image.LANCZOS)
+        img = img.resize((int(w*scale), int(h*scale)), Image.LANCZOS)
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=quality, optimize=True)
     b64 = base64.b64encode(buf.getvalue()).decode("ascii")
@@ -441,7 +434,7 @@ def _vision_extract(img_path, purpose="model"):
             norm = {k: (obj.get(k) or "").strip() for k in SCHEMA.keys()}
             norm = parse_from_raw_text(norm)
             if purpose == "model":
-                norm["serial"] = ""  # force blank
+                norm["serial"] = ""
                 norm["model_no"] = refine_model_with_family(
                     norm.get("model_no",""),
                     norm.get("raw_text","")
@@ -559,8 +552,8 @@ def analyze_pair():
     Matches your current index.html JS.
     Always returns JSON; if vision fails, fields may be blank.
 
-    Logs a provisional row into scans.csv so /view-scans and /job-rows
-    see it immediately (even before Confirm).
+    ALSO: logs a provisional row into scans.csv so /view-scans and /api/scans update
+    right after Analyze, before Confirm.
     """
     try:
         fA = request.files.get("fileA")
@@ -629,7 +622,6 @@ def analyze_pair():
             "order_no": order_no,
             "file_a": nameA,
             "file_b": nameB,
-            # legacy names for backwards compatibility if needed
             "file_model": nameA,
             "file_serial": nameB,
 
@@ -653,7 +645,7 @@ def analyze_pair():
             }, ensure_ascii=False)
         }
 
-        # Log provisional row into scans.csv
+        # Log a provisional row into scans.csv
         flat, cols = ensure_columns(out)
         try:
             df = pd.DataFrame([flat], columns=cols)
@@ -669,164 +661,14 @@ def analyze_pair():
         return jsonify(out)
 
     except Exception as e:
-        # Hard fail: return JSON error so frontend shows message instead of crashing
         print("ANALYZE_PAIR ERROR:", repr(e))
         print(traceback.format_exc())
         return jsonify({"error": "analyze_pair_failed", "detail": str(e)}), 500
-
-# --- NEW: model-only endpoint for Photo A (/analyze_model) ---
-
-@app.route("/analyze_model", methods=["POST"])
-def analyze_model():
-    """
-    Model-only flow (Photo A).
-    Expects:
-      - file_model
-      - order_no (optional)
-    Returns same fields as analyze_pair, but no serial.
-    Logs provisional row into scans.csv.
-    """
-    try:
-        fM = request.files.get("file_model")
-        order_no = (request.form.get("order_no") or "").strip()
-
-        if not fM:
-            return jsonify({"error":"need_file_model"}), 400
-
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        nameM = f"{ts}_A_{fM.filename or 'model.jpg'}"
-        pM = os.path.join(UPLOADS, nameM)
-        fM.save(pM)
-        try:
-            imgM = load_fix_exif(pM); imgM.save(pM, "JPEG", quality=90, optimize=True)
-        except Exception:
-            pass
-
-        model_info = {}
-        try:
-            if API_KEY:
-                model_info = _vision_extract(pM, purpose="model")
-        except Exception as e:
-            print("MODEL-ONLY VISION ERROR:", repr(e), flush=True)
-
-        manufacturer = (model_info.get("manufacturer") or "").strip()
-        model_no = (model_info.get("model_no") or model_info.get("retail_model_guess") or "").strip()
-
-        cpu = ""
-        ram = ""
-        if model_no:
-            hit = db_lookup_specs(manufacturer, model_no)
-            cpu = hit.get("cpu","") or cpu
-            ram = hit.get("ram","") or ram
-            if (not cpu or not ram) and ENABLE_MODEL_INFER:
-                guess = ai_guess_specs(model_no)
-                if not cpu and guess.get("cpu"):
-                    cpu = guess["cpu"]
-                if not ram and guess.get("ram"):
-                    ram = guess["ram"]
-
-        out = {
-            "time": datetime.now().isoformat(timespec="seconds"),
-            "order_no": order_no,
-            "file_a": nameM,
-            "file_b": "",            # no serial photo yet
-            "file_model": nameM,
-            "file_serial": "",
-
-            "manufacturer": manufacturer,
-            "model_no": model_no,
-            "serial": "",
-            "cpu": cpu,
-            "ram": ram,
-
-            "product_no": model_info.get("product_no",""),
-            "reg_model": model_info.get("reg_model",""),
-            "reg_type": model_info.get("reg_type",""),
-            "dpn": model_info.get("dpn",""),
-            "input_power": model_info.get("input_power",""),
-            "retail_model_guess": model_info.get("retail_model_guess",""),
-            "notes": model_info.get("notes",""),
-
-            "raw_json": json.dumps({
-                "model_extracted": model_info
-            }, ensure_ascii=False)
-        }
-
-        flat, cols = ensure_columns(out)
-        try:
-            df = pd.DataFrame([flat], columns=cols)
-            df.to_csv(
-                DATA_CSV,
-                mode=("a" if os.path.exists(DATA_CSV) else "w"),
-                header=not os.path.exists(DATA_CSV),
-                index=False
-            )
-        except Exception as e:
-            print("ANALYZE_MODEL CSV WRITE ERROR:", repr(e), flush=True)
-
-        return jsonify(out)
-    except Exception as e:
-        print("ANALYZE_MODEL ERROR:", repr(e))
-        print(traceback.format_exc())
-        return jsonify({"error":"analyze_model_failed","detail":str(e)}),500
-
-# --- NEW: serial-only endpoint for Photo B (/analyze_serial) ---
-
-@app.route("/analyze_serial", methods=["POST"])
-def analyze_serial():
-    """
-    Serial-only flow (Photo B).
-    Expects:
-      - file_serial
-      - order_no (ignored for now, we just read SN)
-    Returns:
-      - { "serial": "...", "raw_json": "..." }
-    Does NOT write to CSV (it just helps fill the last row on the UI).
-    """
-    try:
-        fS = request.files.get("file_serial")
-        _order_no = (request.form.get("order_no") or "").strip()
-        if not fS:
-            return jsonify({"error":"need_file_serial"}), 400
-
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        nameS = f"{ts}_B_{fS.filename or 'serial.jpg'}"
-        pS = os.path.join(UPLOADS, nameS)
-        fS.save(pS)
-        try:
-            imgS = load_fix_exif(pS); imgS.save(pS, "JPEG", quality=90, optimize=True)
-        except Exception:
-            pass
-
-        serial_info = {}
-        try:
-            if API_KEY:
-                serial_info = _vision_extract(pS, purpose="serial")
-        except Exception as e:
-            print("SERIAL-ONLY VISION ERROR:", repr(e), flush=True)
-
-        serial = (serial_info.get("serial") or "").strip().upper()
-
-        out = {
-            "serial": serial,
-            "raw_json": json.dumps({"serial_extracted": serial_info}, ensure_ascii=False)
-        }
-        return jsonify(out)
-    except Exception as e:
-        print("ANALYZE_SERIAL ERROR:", repr(e))
-        print(traceback.format_exc())
-        return jsonify({"error":"analyze_serial_failed","detail":str(e)}),500
 
 # --- Manual serial fallback (text only) ---
 
 @app.route("/manual_serial_lookup", methods=["POST"])
 def manual_serial_lookup():
-    """
-    Your current index.html expects:
-      - serial (always)
-      - manufacturer, model_no, cpu, ram (if OEM lookup finds them)
-    at TOP LEVEL (not nested).
-    """
     data = request.get_json(force=True, silent=True) or {}
     serial = (data.get("serial") or "").strip().upper()
     if not serial:
@@ -866,24 +708,19 @@ def confirm_row():
             if "time" in df.columns and row_time:
                 mask = df["time"] == row_time
                 if mask.any():
-                    # Update existing row
                     for c in cols:
                         if c in df.columns:
                             df.loc[mask, c] = flat.get(c, "")
                         else:
-                            # add missing column to df, then set
                             df[c] = ""
                             df.loc[mask, c] = flat.get(c, "")
                 else:
-                    # Append if no matching time
                     df = pd.concat([df, pd.DataFrame([flat], columns=cols)], ignore_index=True)
             else:
-                # No time column or no time value: just append
                 df = pd.concat([df, pd.DataFrame([flat], columns=cols)], ignore_index=True)
 
             df.to_csv(DATA_CSV, index=False)
         else:
-            # First row ever: create CSV
             pd.DataFrame([flat], columns=cols).to_csv(
                 DATA_CSV,
                 mode="w",
@@ -893,7 +730,6 @@ def confirm_row():
     except Exception as e:
         print("CONFIRM_ROW CSV WRITE ERROR:", repr(e), flush=True)
 
-    # Learn into models_db.json keyed by model_no
     model_no = (row.get("model_no") or row.get("retail_model_guess") or "").strip()
     manufacturer = (row.get("manufacturer") or "").strip()
     cpu = (row.get("cpu") or "").strip()
@@ -938,59 +774,65 @@ def view_scans():
     try:
         df = pd.read_csv(DATA_CSV, dtype=str, on_bad_lines="skip", engine="python")
 
-        # For very old rows, there might only be 'file'; normalize a bit
         if "file_a" not in df.columns and "file" in df.columns:
             df["file_a"] = df["file"]
 
-        # Show only the last 200 rows so the page stays fast
         df = df.tail(200)
 
-        html_table = df.to_string(index=False)
+        html_table = df.to_html(index=False, escape=False)
         return (
             "<!doctype html><html><head><meta charset='utf-8'><title>View Scans</title>"
             "<style>"
             "body{font-family:system-ui;background:#0b0f17;color:#e9eef7;padding:20px}"
             "h2{margin-bottom:12px}"
-            "pre{background:#0f1522;border:1px solid #1b2740;border-radius:8px;padding:12px;font-size:12px;white-space:pre}"
+            "table{border-collapse:collapse;width:100%;background:#0f1522}"
+            "th,td{border:1px solid #1b2740;padding:6px 8px;font-size:12px}"
+            "th{background:#10192d}"
             "</style></head><body>"
             "<h2>Scans (last 200 rows)</h2>"
-            "<pre>" + html_table + "</pre>"
+            + html_table +
             "</body></html>"
         )
     except Exception as e:
         return f"<pre>Error reading scans.csv: {e}</pre>", 500
 
-# ===== NEW: JSON rows by job/order_no (for UI reload) =====
+# ===== NEW: JSON API for scans.csv (used by desktop to see phone scans) =====
 
-@app.route("/job-rows")
-def job_rows():
+@app.route("/api/scans", methods=["GET"])
+def api_scans():
     """
-    Returns JSON list of rows for a given order_no.
-    Used by the index.html JS to repopulate the table after refresh
-    and to sync desktop with phone uploads.
-    """
-    order_no = (request.args.get("order_no") or "").strip()
-    if not os.path.exists(DATA_CSV) or not order_no:
-        return jsonify([])
+    Returns the last 200 rows from scans.csv as JSON.
 
+    Shape:
+    {
+      "rows": [
+        {
+          "time": "...",
+          "order_no": "...",
+          "file_a": "...",
+          "file_b": "...",
+          "manufacturer": "...",
+          "model_no": "...",
+          "serial": "...",
+          "cpu": "...",
+          "ram": "...",
+          ...
+        },
+        ...
+      ]
+    }
+    """
+    if not os.path.exists(DATA_CSV):
+        return jsonify({"rows": []})
     try:
         df = pd.read_csv(DATA_CSV, dtype=str, on_bad_lines="skip", engine="python")
-        if "order_no" not in df.columns:
-            return jsonify([])
-
-        df["order_no"] = df["order_no"].fillna("")
-        df = df[df["order_no"] == order_no]
-
-        if df.empty:
-            return jsonify([])
-
+        df = df.tail(200)
         df = df.fillna("")
-        records = df.to_dict(orient="records")
-        return jsonify(records)
+        rows = df.to_dict(orient="records")
+        return jsonify({"rows": rows})
     except Exception as e:
-        print("JOB_ROWS ERROR:", repr(e))
-        print(traceback.format_exc())
-        return jsonify({"error":"job_rows_failed","detail":str(e)}),500
+        print("API_SCANS ERROR:", repr(e))
+        return jsonify({"error": "read_failed", "detail": str(e)}), 500
 
 # ===== Upload DB page (unchanged) =====
 
@@ -1110,89 +952,6 @@ def whereami():
         "expected_template": os.path.join(app.template_folder or "templates", "upload_db.html"),
         "models_db_path": MODELS_DB_PATH
     })
-
-# ===== NEW: Phone camera /scan page =====
-
-SCAN_HTML = """<!doctype html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Phone Camera Intake</title>
-<style>
-  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:20px;background:#0b0f17;color:#e9eef7}
-  h2{margin:0 0 8px}
-  .small{color:#9fb0c7;font-size:13px;margin:6px 0 14px}
-  .card{background:#0f1522;border:1px solid #1b2740;border-radius:12px;padding:14px;max-width:480px}
-  label{display:block;margin-top:10px;font-size:14px}
-  input[type="text"]{width:100%;background:#0b1220;border:1px solid #334a78;border-radius:8px;padding:10px 12px;color:#e9eef7}
-  input[type="file"]{margin-top:6px;color:#e9eef7}
-  button{margin-top:14px;padding:10px 14px;border-radius:8px;border:1px solid #2356ff;background:#2356ff;color:#fff;cursor:pointer;width:100%}
-  .hint{font-size:12px;color:#9fb0c7;margin-top:8px}
-  .ok{color:#22c55e}
-  .err{color:#f87171}
-</style>
-</head>
-<body>
-  <h2>Phone Camera Intake</h2>
-  <div class="small">
-    Open this on your phone. Use the <b>same Order No.</b> as your desktop page.
-    Each pair of photos you upload will appear under that Order No. on desktop.
-  </div>
-  <div class="card">
-    <form id="scanForm">
-      <label>Order No.
-        <input id="orderInput" name="order_no" type="text" placeholder="e.g., 2025-IF-Ohio-Load-7">
-      </label>
-      <label>Photo A — Model / Dark Label
-        <input name="fileA" type="file" accept="image/*" capture="environment" required>
-      </label>
-      <label>Photo B — Serial / White Sticker
-        <input name="fileB" type="file" accept="image/*" capture="environment" required>
-      </label>
-      <button type="submit">Upload to Job</button>
-      <div id="status" class="hint"></div>
-    </form>
-  </div>
-<script>
-(function(){
-  function getQueryParam(name){
-    const m = new RegExp('[?&]'+encodeURIComponent(name)+'=([^&]*)').exec(window.location.search);
-    return m ? decodeURIComponent(m[1].replace(/\\+/g,' ')) : '';
-  }
-  const form = document.getElementById('scanForm');
-  const status = document.getElementById('status');
-  const orderInput = document.getElementById('orderInput');
-  const qOrder = getQueryParam('order_no');
-  if(qOrder){ orderInput.value = qOrder; }
-
-  form.addEventListener('submit', async (e)=>{
-    e.preventDefault();
-    status.textContent = 'Uploading…'; status.className='hint';
-    const fd = new FormData(form);
-    const r = await fetch('/analyze_pair', { method:'POST', body: fd });
-    let j = {};
-    try{ j = await r.json(); }catch(_){}
-    if(!r.ok || j.error){
-      status.textContent = 'Upload failed: ' + (j.detail || j.error || ('HTTP '+r.status));
-      status.className = 'hint err';
-      return;
-    }
-    status.textContent = 'OK — added to job ' + (fd.get('order_no') || '(no order)');
-    status.className = 'hint ok';
-    form.reset();
-    if(qOrder){ orderInput.value = qOrder; }
-  });
-})();
-</script>
-</body>
-</html>"""
-
-@app.route("/scan", methods=["GET"])
-def scan_page():
-    try:
-        return render_template("scan.html")
-    except TemplateNotFound:
-        return SCAN_HTML
 
 if __name__ == "__main__":
     print(f"ALLOW_LOOKUPS={ALLOW_LOOKUPS}  LOOKUP_TIMEOUT={LOOKUP_TIMEOUT}s")
