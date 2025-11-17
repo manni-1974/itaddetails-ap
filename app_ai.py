@@ -1,12 +1,13 @@
-# app_ai.py — Model-first then Serial-only flow + Order No. + model-only de-dupe learning
-# Keeps prior features: OEM helpers, DB fallback/learning, CSV log, /upload-db builder.
-# New:
-#   - /analyze_model: first photo (manufacturing label / brand imprint) -> fill all EXCEPT serial.
-#   - /analyze_serial: second photo (serial sticker) -> fill ONLY the serial field.
-#   - /view-scans: HTML view of scans.csv (last 200 rows), robust to old/new CSV formats.
-#   - /latest-scans: JSON API with last rows (for future shared history on homepage).
-#   - /view-models-db: HTML view of models_db.json.
-#   - Order No. stays in outputs & CSV; it's sticky on the client.
+# app_ai.py — Two-photo /analyze_pair flow + model repository + scans viewer
+# - Frontend: posts to /analyze_pair with fileA + fileB + order_no
+# - Backend:
+#     /analyze_pair   → reads model from photo A, serial from photo B (robust to failures)
+#     /manual_serial_lookup → OEM lookup by serial (Dell only for now)
+#     /confirm_row    → logs to scans.csv and learns into data/models_db.json
+#     /view-scans     → view scans.csv in browser (HTML table, last 200 rows)
+#     /view-models-db → view models_db.json in browser
+#
+# Your templates/index.html stays exactly as you pasted earlier.
 
 import os, re, io, json, time, base64, traceback, shutil
 from datetime import datetime
@@ -38,13 +39,14 @@ DATA_CSV = "scans.csv"
 UPLOADS  = "uploads"
 DATA_DIR = "data"
 MODELS_DB_PATH = os.path.join(DATA_DIR, "models_db.json")
+
 os.makedirs(UPLOADS, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # Regulatory → retail hint
 REG_MODEL_TO_RETAIL = {"P131G": "Latitude 7410"}
 
-# Quick hints
+# Quick hints for model→spec guesses
 SPEC_HINTS = {
     "Latitude 7410": {
         "cpu": "Intel Core i5-10210U / i7-10610U (10th Gen, vPro optional)",
@@ -82,42 +84,48 @@ SCHEMA = {
   "retail_model_guess": ""
 }
 
-# --------- Helpers to introspect recent log (for index footer) ---------
+# --------- Helpers: recent log + CSV columns ----------
+
 def recent_log():
     if not os.path.exists(DATA_CSV):
         return "(no scans yet)"
     try:
         df = pd.read_csv(DATA_CSV, dtype=str, on_bad_lines="skip", engine="python")
-        # Support both old and new file layouts
-        cols_order = [
-            "time", "order_no", "file_model", "file_serial",
-            "manufacturer", "model_no", "serial",
-            "product_no", "reg_model", "reg_type", "dpn", "input_power",
-            "retail_model_guess"
+        # Show a reasonable subset of columns if they exist
+        cols_preferred = [
+            "time","order_no",
+            "file_a","file_b",            # new
+            "file_model","file_serial",   # legacy
+            "file",                       # very old
+            "manufacturer","model_no","model","serial",
+            "product_no","reg_model","reg_type","dpn",
+            "input_power","retail_model_guess"
         ]
-        # Older CSVs may use 'file' instead of file_model/file_serial
-        if "file_model" not in df.columns and "file" in df.columns:
-            df["file_model"] = df["file"]
-        cols = [c for c in cols_order if c in df.columns]
+        cols = [c for c in cols_preferred if c in df.columns]
         if not cols:
-            return df.tail(10).to_string(index=False)
+            cols = list(df.columns)
         return df[cols].tail(10).to_string(index=False)
     except Exception as e:
         return f"(could not read CSV: {e})"
 
 def ensure_columns(row):
+    # Include both new (file_a/file_b) and legacy (file_model/file_serial/file)
     cols = [
-        "time","order_no","file_model","file_serial",
+        "time","order_no",
+        "file_a","file_b",
+        "file_model","file_serial",
+        "file",            # for very old rows / compatibility
         "manufacturer","model_no","serial",
         "cpu","ram",
         "product_no","reg_model","reg_type","dpn","input_power",
         "retail_model_guess","notes","raw_json"
     ]
-    out = {k:"" for k in cols}
+    out = {k: "" for k in cols}
     out.update(row)
     return out, cols
 
 # ---------- Imaging ----------
+
 def load_fix_exif(p):
     img = Image.open(p).convert("RGB")
     return ImageOps.exif_transpose(img)
@@ -139,6 +147,7 @@ def pillow_contrast_boost(img):
     return g.convert("RGB")
 
 def cv2_clahe_boost(img):
+    # Standard CLAHE contrast, then slight sharpening
     bgr = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
     h, w = bgr.shape[:2]
     pad = max(2, int(min(h, w) * 0.01))
@@ -156,8 +165,7 @@ def cv2_clahe_boost(img):
     out = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
     blur = cv2.GaussianBlur(out, (0,0), 1.0)
     sharp = cv2.addWeighted(out, 1.4, blur, -0.4, 0)
-    rgb = cv2.cvtColor(sharp, cv2.COLOR_RGB2RGB)
-    return Image.fromarray(rgb)
+    return Image.fromarray(sharp)
 
 def preprocess_for_ocr(img):
     if CV2_OK:
@@ -185,13 +193,14 @@ def jpeg_data_url(img, max_side=2400, quality=88):
     b64 = base64.b64encode(buf.getvalue()).decode("ascii")
     return "data:image/jpeg;base64," + b64
 
-# ---------- Regex ----------
+# ---------- Regex + parsing ----------
+
 SERIAL_PAT       = re.compile(r"(?:S/N|SN|Service\s*Tag|Serial(?:\s*No\.?)?|Serial\s*Number|CN-)\s*[:#]?\s*([A-Z0-9\-]{5,})", re.I)
 MODELNO_PAT      = re.compile(r"(?:Model\s*No\.?|Model)\s*[:#]?\s*([A-Z0-9\-\._]+)", re.I)
 DPN_PAT          = re.compile(r"\bDP/?N[:\s]*([A-Z0-9\-]+)\b", re.I)
 PN_PAT           = re.compile(r"\b(P/?N|Product\s*No\.?)[:\s]*([A-Z0-9\-\._]+)\b", re.I)
 REGMODEL_PAT     = re.compile(r"\bReg(?:ulatory)?\s*Model[:\s]*([A-Z0-9\-]+)\b", re.I)
-REGTYPE_PAT      = re.compile(r"\bReg(?:ulatory)?\s*Type(?:\s*No\.?)?[:\s]*([A-Z0-9\-]+)\b", re.I)
+REGTYPE_PAT     = re.compile(r"\bReg(?:ulatory)?\s*Type(?:\s*No\.?)?[:\s]*([A-Z0-9\-]+)\b", re.I)
 INPUT_PAT        = re.compile(r"\b(1[29]\.?\d*V|20V)\s*[-–—]?\s*(\d{1,2}\.\d{1,2}A)\b", re.I)
 SERVICE_TAG_PAT  = re.compile(r"\b(?:ST|Service\s*Tag)\s*[:#]?\s*([A-Z0-9]{7})\b", re.I)
 FAMILY_MODEL_PAT = re.compile(
@@ -206,25 +215,30 @@ FAMILY_MODEL_PAT = re.compile(
 
 def parse_from_raw_text(norm: dict):
     raw = (norm.get("raw_text") or "") + " " + (norm.get("notes") or "")
-    # MODEL ONLY — no serial for model step
     if not norm.get("model_no"):
         m = MODELNO_PAT.search(raw)
-        if m: norm["model_no"] = m.group(1).strip()
+        if m:
+            norm["model_no"] = m.group(1).strip()
     if not norm.get("dpn"):
         m = DPN_PAT.search(raw)
-        if m: norm["dpn"] = m.group(1).strip().upper()
+        if m:
+            norm["dpn"] = m.group(1).strip().upper()
     if not norm.get("product_no"):
         m = PN_PAT.search(raw)
-        if m: norm["product_no"] = m.group(2).strip().upper()
+        if m:
+            norm["product_no"] = m.group(2).strip().upper()
     if not norm.get("reg_model"):
         m = REGMODEL_PAT.search(raw)
-        if m: norm["reg_model"] = m.group(1).strip().upper()
+        if m:
+            norm["reg_model"] = m.group(1).strip().upper()
     if not norm.get("reg_type"):
         m = REGTYPE_PAT.search(raw)
-        if m: norm["reg_type"] = m.group(1).strip().upper()
+        if m:
+            norm["reg_type"] = m.group(1).strip().upper()
     if not norm.get("input_power"):
         m = INPUT_PAT.search(raw)
-        if m: norm["input_power"] = f"{m.group(1).upper()} {m.group(2)}"
+        if m:
+            norm["input_power"] = f"{m.group(1).upper()} {m.group(2)}"
     if not norm.get("retail_model_guess") and (norm.get("manufacturer","").lower() == "dell"):
         rm = (norm.get("reg_model") or "").upper()
         if rm in REG_MODEL_TO_RETAIL:
@@ -233,16 +247,20 @@ def parse_from_raw_text(norm: dict):
 
 def refine_model_with_family(model_no: str, raw_text: str) -> str:
     fam = FAMILY_MODEL_PAT.search(raw_text or "")
-    if not fam: return model_no
+    if not fam:
+        return model_no
     brand = fam.group(1).strip()
     val   = fam.group(2).strip()
     val = re.sub(r"\b2\s*[- ]?\s*in\s*[- ]?1\b", "2-in-1", val, flags=re.I)
     cand = f"{brand} {val}"
-    if (not model_no) or (len(model_no) <= 5 and " " not in model_no): return cand
-    if brand.lower() in model_no.lower(): return model_no
+    if (not model_no) or (len(model_no) <= 5 and " " not in model_no):
+        return cand
+    if brand.lower() in model_no.lower():
+        return model_no
     return cand
 
 # ---------- models_db helpers ----------
+
 def _norm(s):
     return re.sub(r"\s+", " ", (s or "").strip()).lower()
 
@@ -263,20 +281,24 @@ def _save_models_db(records):
 
 def db_lookup_specs(_manufacturer_unused: str, model_name: str) -> dict:
     key = _norm(model_name)
-    if not key: return {}
+    if not key:
+        return {}
     for rec in _load_models_db():
         mdl = _norm(rec.get("model_no") or rec.get("model") or "")
         alts = rec.get("alt_names") or []
         if mdl == key or any(_norm(a) == key for a in (alts if isinstance(alts, list) else [])):
             out = {}
-            if rec.get("cpu"): out["cpu"] = rec["cpu"].strip()
-            if rec.get("ram"): out["ram"] = rec["ram"].strip()
+            if rec.get("cpu"):
+                out["cpu"] = rec["cpu"].strip()
+            if rec.get("ram"):
+                out["ram"] = rec["ram"].strip()
             return out
     return {}
 
 def learn_model_entry(model_no: str, manufacturer: str = "", cpu: str = "", ram: str = ""):
     mdl = (model_no or "").strip()
-    if not mdl: return
+    if not mdl:
+        return
     key = _norm(mdl)
     records = _load_models_db()
     idx = None
@@ -291,21 +313,26 @@ def learn_model_entry(model_no: str, manufacturer: str = "", cpu: str = "", ram:
         "ram": (ram or "").strip(),
         "alt_names": records[idx].get("alt_names", []) if idx is not None else []
     }
-    if idx is None: records.append(new_rec)
-    else:           records[idx] = new_rec
+    if idx is None:
+        records.append(new_rec)
+    else:
+        records[idx] = new_rec
     _save_models_db(records)
 
 # ---------- LLM helpers ----------
+
 def ai_guess_specs(model_str: str) -> dict:
     model_str = (model_str or "").strip()
-    if not API_KEY or not model_str: return {}
+    if not API_KEY or not model_str:
+        return {}
     for key, v in SPEC_HINTS.items():
         if key.lower() in model_str.lower():
             return {"cpu": v.get("cpu",""), "ram": v.get("ram","")}
     import requests
     url = f"{API_BASE}/chat/completions"
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-    if OPENAI_PROJECT: headers["OpenAI-Project"] = OPENAI_PROJECT
+    if OPENAI_PROJECT:
+        headers["OpenAI-Project"] = OPENAI_PROJECT
     prompt = (
         "You are a hardware spec assistant. Given a laptop/desktop marketing model string, "
         "respond with a short JSON object guessing typical CPU family and default RAM. "
@@ -317,23 +344,32 @@ def ai_guess_specs(model_str: str) -> dict:
     body = {"model": MODEL, "messages": [{"role":"user","content":prompt}], "temperature": 0.1}
     try:
         r = requests.post(url, headers=headers, json=body, timeout=20)
-        if r.status_code >= 400: return {}
+        if r.status_code >= 400:
+            return {}
         jd  = r.json()
         txt = jd["choices"][0]["message"]["content"]
         m   = re.search(r"\{.*\}", txt, re.S)
-        if not m: return {}
+        if not m:
+            return {}
         obj = json.loads(m.group(0))
         out = {}
         if isinstance(obj, dict):
-            if obj.get("cpu"): out["cpu"] = str(obj["cpu"]).strip()
-            if obj.get("ram"): out["ram"] = str(obj["ram"]).strip()
+            if obj.get("cpu"):
+                out["cpu"] = str(obj["cpu"]).strip()
+            if obj.get("ram"):
+                out["ram"] = str(obj["ram"]).strip()
         return out
     except Exception:
         return {}
 
 # ---------- Vision calls ----------
+
 def _vision_extract(img_path, purpose="model"):
-    """purpose: 'model' or 'serial' — controls prompt/fields we trust."""
+    """
+    purpose: 'model' or 'serial' — controls prompt/fields we trust.
+    - 'model': manufacturer/model + regulatory fields, but NO serial.
+    - 'serial': serial only.
+    """
     if not API_KEY:
         raise RuntimeError("VISION_API_KEY is not set.")
     import requests
@@ -361,7 +397,8 @@ def _vision_extract(img_path, purpose="model"):
     else:  # serial
         prompt = (
             "Read the WHITE service/serial sticker or any clear serial area.\n"
-            "Goal: Extract only the device serial/service tag. Look for tokens like 'SN', 'S/N', 'Serial', 'Service Tag', 'ST'.\n"
+            "Goal: Extract only the device serial/service tag. Look for tokens like "
+            "'SN', 'S/N', 'Serial', 'Service Tag', 'ST'.\n"
             "Return STRICT JSON like:\n" + json.dumps(SCHEMA, indent=2) + "\n"
             "Rules:\n"
             "- Fill ONLY the 'serial' field if found; other fields should remain empty strings.\n"
@@ -371,15 +408,19 @@ def _vision_extract(img_path, purpose="model"):
 
     url = f"{API_BASE}/chat/completions"
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-    if OPENAI_PROJECT: headers["OpenAI-Project"] = OPENAI_PROJECT
+    if OPENAI_PROJECT:
+        headers["OpenAI-Project"] = OPENAI_PROJECT
     payload = {
         "model": MODEL,
-        "messages": [{"role":"user","content":[
-            {"type":"text","text":prompt},
-            {"type":"image_url","image_url":{"url":data_proc}},
-            {"type":"image_url","image_url":{"url":data_inv}},
-            {"type":"image_url","image_url":{"url":data_raw}},
-        ]}],
+        "messages": [{
+            "role": "user",
+            "content": [
+                {"type":"text","text":prompt},
+                {"type":"image_url","image_url":{"url":data_proc}},
+                {"type":"image_url","image_url":{"url":data_inv}},
+                {"type":"image_url","image_url":{"url":data_raw}},
+            ]
+        }],
         "temperature": 0.0
     }
     for attempt in range(5):
@@ -389,13 +430,17 @@ def _vision_extract(img_path, purpose="model"):
             jd = r.json()
             text = jd["choices"][0]["message"]["content"]
             m = re.search(r"\{.*\}", text, re.S)
-            if not m: raise ValueError(f"No JSON in vision response: {text[:200]}")
+            if not m:
+                raise ValueError(f"No JSON in vision response: {text[:200]}")
             obj = json.loads(m.group(0))
             norm = {k: (obj.get(k) or "").strip() for k in SCHEMA.keys()}
             norm = parse_from_raw_text(norm)
             if purpose == "model":
-                norm["serial"] = ""  # force empty serial
-                norm["model_no"] = refine_model_with_family(norm.get("model_no",""), norm.get("raw_text",""))
+                norm["serial"] = ""  # force blank
+                norm["model_no"] = refine_model_with_family(
+                    norm.get("model_no",""),
+                    norm.get("raw_text","")
+                )
             else:
                 serial_found = norm.get("serial","")
                 norm = {k:"" for k in SCHEMA.keys()}
@@ -407,10 +452,12 @@ def _vision_extract(img_path, purpose="model"):
         except Exception as e:
             code = getattr(getattr(e, "response", None), "status_code", None)
             if code in (429,) or (code is not None and 500 <= code < 600):
-                time.sleep(2 ** attempt); continue
+                time.sleep(2 ** attempt)
+                continue
             raise
 
 # ---------- OEM helpers ----------
+
 def _is_dell_service_tag(tag: str) -> bool:
     return bool(re.fullmatch(r"[A-Z0-9]{7}", (tag or "").strip().upper()))
 
@@ -427,13 +474,19 @@ def _lookup_dell_by_tag(tag: str):
     for url in endpoints:
         try:
             r = requests.get(url, timeout=LOOKUP_TIMEOUT, headers={"Accept":"application/json"})
-            if r.status_code != 200: continue
+            if r.status_code != 200:
+                continue
             data = r.json()
             if isinstance(data, dict):
                 summaries = data.get("assetSummaries") or data.get("AssetSummaries")
                 if isinstance(summaries, list) and summaries:
                     s0 = summaries[0]
-                    model = s0.get("productLineDescription") or s0.get("Model") or s0.get("productId") or ""
+                    model = (
+                        s0.get("productLineDescription") or
+                        s0.get("Model") or
+                        s0.get("productId") or
+                        ""
+                    )
                     if model:
                         out["manufacturer"] = "DELL"
                         out["model_no"] = str(model).strip()
@@ -453,17 +506,21 @@ def _lookup_dell_by_tag(tag: str):
 
 def oem_lookup(serial: str) -> dict:
     sn = (serial or "").strip().upper()
-    if not sn: return {}
+    if not sn:
+        return {}
     if _is_dell_service_tag(sn):
         got = _lookup_dell_by_tag(sn)
         if got and (not got.get("cpu") or not got.get("ram")) and got.get("model_no"):
             guess = ai_guess_specs(got["model_no"])
-            if guess.get("cpu"): got["cpu"] = guess["cpu"]
-            if guess.get("ram"): got["ram"] = guess["ram"]
+            if guess.get("cpu"):
+                got["cpu"] = guess["cpu"]
+            if guess.get("ram"):
+                got["ram"] = guess["ram"]
         return got
     return {}
 
 # ---------- Routes ----------
+
 @app.route("/")
 def home():
     return render_template("index.html", log=recent_log())
@@ -473,7 +530,8 @@ def selftest():
     import requests
     url = f"{API_BASE}/chat/completions"
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-    if OPENAI_PROJECT: headers["OpenAI-Project"] = OPENAI_PROJECT
+    if OPENAI_PROJECT:
+        headers["OpenAI-Project"] = OPENAI_PROJECT
     body = {"model": MODEL, "messages": [{"role":"user","content":"Reply 'ok'."}], "temperature": 0.0}
     try:
         r = requests.post(url, headers=headers, json=body, timeout=30)
@@ -484,117 +542,151 @@ def selftest():
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
 
-# --- Step 1: MODEL photo ---
-@app.route("/analyze_model", methods=["POST"])
-def analyze_model():
-    fModel = request.files.get("file_model")
-    order_no = (request.form.get("order_no") or "").strip()
-    if not fModel:
-        return jsonify({"error":"missing_model_photo"}), 400
+# --- MAIN ENDPOINT YOUR UI CALLS: /analyze_pair ---
 
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    nameM = f"{ts}_MODEL_{fModel.filename or 'model.jpg'}"
-    pM = os.path.join(UPLOADS, nameM)
-    fModel.save(pM)
+@app.route("/analyze_pair", methods=["POST"])
+def analyze_pair():
+    """
+    Expects:
+      - fileA: model/label photo
+      - fileB: serial sticker photo
+      - order_no: optional
+    Matches your current index.html JS.
+    Always returns JSON; if vision fails, fields may be blank.
+    """
     try:
-        img = load_fix_exif(pM); img.save(pM, "JPEG", quality=90, optimize=True)
-    except Exception:
-        pass
+        fA = request.files.get("fileA")
+        fB = request.files.get("fileB")
+        order_no = (request.form.get("order_no") or "").strip()
 
-    extracted = {}
-    try:
-        extracted = _vision_extract(pM, purpose="model")
+        if not fA or not fB:
+            return jsonify({"error":"need_both_files"}), 400
+
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # Save A
+        nameA = f"{ts}_A_{fA.filename or 'a.jpg'}"
+        pA = os.path.join(UPLOADS, nameA)
+        fA.save(pA)
+        try:
+            imgA = load_fix_exif(pA); imgA.save(pA, "JPEG", quality=90, optimize=True)
+        except Exception:
+            pass
+
+        # Save B
+        nameB = f"{ts}_B_{fB.filename or 'b.jpg'}"
+        pB = os.path.join(UPLOADS, nameB)
+        fB.save(pB)
+        try:
+            imgB = load_fix_exif(pB); imgB.save(pB, "JPEG", quality=90, optimize=True)
+        except Exception:
+            pass
+
+        # Run vision, but don't crash if it fails
+        model_info = {}
+        serial_info = {}
+
+        try:
+            if API_KEY:
+                model_info = _vision_extract(pA, purpose="model")
+        except Exception as e:
+            print("MODEL VISION ERROR:", repr(e), flush=True)
+
+        try:
+            if API_KEY:
+                serial_info = _vision_extract(pB, purpose="serial")
+        except Exception as e:
+            print("SERIAL VISION ERROR:", repr(e), flush=True)
+
+        manufacturer = (model_info.get("manufacturer") or "").strip()
+        model_no = (model_info.get("model_no") or model_info.get("retail_model_guess") or "").strip()
+        serial = (serial_info.get("serial") or "").strip().upper()
+
+        # CPU / RAM via model DB + guessing
+        cpu = ""
+        ram = ""
+        if model_no:
+            hit = db_lookup_specs(manufacturer, model_no)
+            cpu = hit.get("cpu","") or cpu
+            ram = hit.get("ram","") or ram
+            if (not cpu or not ram) and ENABLE_MODEL_INFER:
+                guess = ai_guess_specs(model_no)
+                if not cpu and guess.get("cpu"):
+                    cpu = guess["cpu"]
+                if not ram and guess.get("ram"):
+                    ram = guess["ram"]
+
+        out = {
+            "time": datetime.now().isoformat(timespec="seconds"),
+            "order_no": order_no,
+            "file_a": nameA,
+            "file_b": nameB,
+            # legacy names for backwards compatibility if needed
+            "file_model": nameA,
+            "file_serial": nameB,
+
+            "manufacturer": manufacturer,
+            "model_no": model_no,
+            "serial": serial,
+            "cpu": cpu,
+            "ram": ram,
+
+            "product_no": model_info.get("product_no",""),
+            "reg_model": model_info.get("reg_model",""),
+            "reg_type": model_info.get("reg_type",""),
+            "dpn": model_info.get("dpn",""),
+            "input_power": model_info.get("input_power",""),
+            "retail_model_guess": model_info.get("retail_model_guess",""),
+            "notes": model_info.get("notes",""),
+
+            "raw_json": json.dumps({
+                "model_extracted": model_info,
+                "serial_extracted": serial_info
+            }, ensure_ascii=False)
+        }
+
+        return jsonify(out)
+
     except Exception as e:
-        print("MODEL VISION ERROR:", repr(e))
-        extracted = {}
+        # Hard fail: return JSON error so frontend shows message instead of crashing
+        print("ANALYZE_PAIR ERROR:", repr(e))
+        print(traceback.format_exc())
+        return jsonify({"error": "analyze_pair_failed", "detail": str(e)}), 500
 
-    manufacturer = extracted.get("manufacturer","")
-    model_no     = extracted.get("model_no","") or extracted.get("retail_model_guess","")
+# --- Manual serial fallback (text only) ---
 
-    cpu, ram = "", ""
-    if model_no:
-        hit = db_lookup_specs(manufacturer, model_no)
-        cpu = hit.get("cpu","") or cpu
-        ram = hit.get("ram","") or ram
-        if (not cpu or not ram):
-            guess = ai_guess_specs(model_no)
-            if not cpu and guess.get("cpu"): cpu = guess["cpu"]
-            if not ram and guess.get("ram"): ram = guess["ram"]
-
-    out = {
-        "time": datetime.now().isoformat(timespec="seconds"),
-        "order_no": order_no,
-        "file_model": nameM,
-        "file_serial": "",
-        "manufacturer": manufacturer,
-        "model_no": model_no,
-        "serial": "",
-        "cpu": cpu, "ram": ram,
-        "product_no": extracted.get("product_no",""),
-        "reg_model": extracted.get("reg_model",""),
-        "reg_type": extracted.get("reg_type",""),
-        "dpn": extracted.get("dpn",""),
-        "input_power": extracted.get("input_power",""),
-        "retail_model_guess": extracted.get("retail_model_guess",""),
-        "notes": extracted.get("notes",""),
-        "raw_json": json.dumps({"model_extracted": extracted}, ensure_ascii=False)
-    }
-    return jsonify(out)
-
-# --- Step 2: SERIAL photo (serial only) ---
-@app.route("/analyze_serial", methods=["POST"])
-def analyze_serial():
-    fSerial  = request.files.get("file_serial")
-    order_no = (request.form.get("order_no") or "").strip()
-    if not fSerial:
-        return jsonify({"error":"missing_serial_photo"}), 400
-
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    nameS = f"{ts}_SERIAL_{fSerial.filename or 'serial.jpg'}"
-    pS = os.path.join(UPLOADS, nameS)
-    fSerial.save(pS)
-    try:
-        img = load_fix_exif(pS); img.save(pS, "JPEG", quality=90, optimize=True)
-    except Exception:
-        pass
-
-    extracted = {}
-    try:
-        extracted = _vision_extract(pS, purpose="serial")
-    except Exception as e:
-        print("SERIAL VISION ERROR:", repr(e))
-        extracted = {}
-
-    serial = extracted.get("serial","").upper()
-
-    out = {
-        "time": datetime.now().isoformat(timespec="seconds"),
-        "order_no": order_no,
-        "file_serial": nameS,
-        "serial": serial,
-        "raw_json": json.dumps({"serial_extracted": extracted}, ensure_ascii=False)
-    }
-    return jsonify(out)
-
-# Manual serial fallback (no photo)
 @app.route("/manual_serial_lookup", methods=["POST"])
 def manual_serial_lookup():
+    """
+    Your current index.html expects:
+      - serial (always)
+      - manufacturer, model_no, cpu, ram (if OEM lookup finds them)
+    at TOP LEVEL (not nested).
+    """
     data = request.get_json(force=True, silent=True) or {}
     serial = (data.get("serial") or "").strip().upper()
     if not serial:
         return jsonify({"error":"missing_serial"}), 400
+
     looked = oem_lookup(serial) if ALLOW_LOOKUPS else {}
+
     return jsonify({
         "serial": serial,
-        "oem": looked
+        "manufacturer": looked.get("manufacturer",""),
+        "model_no": looked.get("model_no",""),
+        "cpu": looked.get("cpu",""),
+        "ram": looked.get("ram",""),
+        "raw_json": json.dumps({"oem_lookup": looked}, ensure_ascii=False)
     })
 
-# Confirm/save + learn (model-only de-dupe)
+# --- Confirm/save + learn ---
+
 @app.route("/confirm_row", methods=["POST"])
 def confirm_row():
     row = request.get_json(force=True, silent=True) or {}
     flat, cols = ensure_columns(row)
 
+    # Append to scans.csv
     pd.DataFrame([flat], columns=cols).to_csv(
         DATA_CSV,
         mode=("a" if os.path.exists(DATA_CSV) else "w"),
@@ -602,6 +694,7 @@ def confirm_row():
         index=False
     )
 
+    # Learn into models_db.json keyed by model_no
     model_no = (row.get("model_no") or row.get("retail_model_guess") or "").strip()
     manufacturer = (row.get("manufacturer") or "").strip()
     cpu = (row.get("cpu") or "").strip()
@@ -611,67 +704,58 @@ def confirm_row():
 
     return jsonify({"ok": True, "saved": flat.get("time","")})
 
-# ===== View / export helpers =====
+# ===== View models_db.json in browser =====
 
-# View the models DB as HTML
 @app.route("/view-models-db")
 def view_models_db():
     if not os.path.exists(MODELS_DB_PATH):
         return (
-            "<!doctype html><html><body style='font-family:system-ui;background:#0b0f17;color:#e9eef7;padding:20px'>"
-            "<h2>models_db.json not found.</h2>"
-            "<p>Expected path: <code>data/models_db.json</code></p>"
-            "<p>It will be created when you either:</p>"
-            "<ul>"
-            "<li>Upload a model database via <code>/upload-db</code>, or</li>"
-            "<li>Confirm at least one row with a non-empty <b>Model</b> field.</li>"
-            "</ul>"
-            "</body></html>"
+            "<pre>"
+            "models_db.json not found yet.\n\n"
+            f"Expected path: {MODELS_DB_PATH}\n\n"
+            "It will be created when you:\n"
+            "  - Upload a model DB via /upload-db, or\n"
+            "  - Confirm at least one row with a non-empty model_no.\n"
+            "</pre>"
         )
     try:
-        records = _load_models_db()
-        df = pd.DataFrame(records)
-        if df.empty:
-            html_table = "<p>No models in DB yet.</p>"
-        else:
-            html_table = df.to_html(index=False, escape=False)
-        return (
-            "<!doctype html><html><head><meta charset='utf-8'><title>View Models DB</title>"
-            "<style>body{font-family:system-ui;background:#0b0f17;color:#e9eef7;padding:20px}"
-            "table{border-collapse:collapse;width:100%;background:#0f1522}"
-            "th,td{border:1px solid #1b2740;padding:8px 10px;font-size:13px}"
-            "th{background:#10192d}</style></head><body>"
-            "<h2>Models Database</h2>"
-            + html_table +
-            "</body></html>"
-        )
+        with open(MODELS_DB_PATH, "r", encoding="utf-8") as f:
+            return "<pre>" + f.read() + "</pre>"
     except Exception as e:
-        return f"<pre>Error reading models_db.json: {e}</pre>", 500
+        return f"<pre>Error reading models_db.json: {e}</pre>"
 
-# View scans.csv as HTML (all devices combined)
+# ===== View scans.csv in browser (HTML table, last 200 rows) =====
+
 @app.route("/view-scans")
 def view_scans():
     if not os.path.exists(DATA_CSV):
         return (
             "<!doctype html><html><body style='font-family:system-ui;background:#0b0f17;color:#e9eef7;padding:20px'>"
             "<h2>scans.csv not found.</h2>"
-            "<p>No rows have been confirmed yet, or the service was redeployed.</p>"
+            f"<p>Expected path: <code>{DATA_CSV}</code></p>"
+            "<p>It is created when you confirm the first row.</p>"
             "</body></html>"
         )
     try:
         df = pd.read_csv(DATA_CSV, dtype=str, on_bad_lines="skip", engine="python")
-        # Normalize for old vs new layouts
-        if "file_model" not in df.columns and "file" in df.columns:
-            df["file_model"] = df["file"]
-        # Just show the last 200 rows
+
+        # For very old rows, there might only be 'file'; normalize a bit
+        if "file_a" not in df.columns and "file" in df.columns:
+            df["file_a"] = df["file"]
+
+        # Show only the last 200 rows so the page stays fast
         df = df.tail(200)
+
         html_table = df.to_html(index=False, escape=False)
         return (
             "<!doctype html><html><head><meta charset='utf-8'><title>View Scans</title>"
-            "<style>body{font-family:system-ui;background:#0b0f17;color:#e9eef7;padding:20px}"
+            "<style>"
+            "body{font-family:system-ui;background:#0b0f17;color:#e9eef7;padding:20px}"
+            "h2{margin-bottom:12px}"
             "table{border-collapse:collapse;width:100%;background:#0f1522}"
-            "th,td{border:1px solid #1b2740;padding:8px 10px;font-size:13px}"
-            "th{background:#10192d}</style></head><body>"
+            "th,td{border:1px solid #1b2740;padding:6px 8px;font-size:12px}"
+            "th{background:#10192d}"
+            "</style></head><body>"
             "<h2>Scans (last 200 rows)</h2>"
             + html_table +
             "</body></html>"
@@ -679,20 +763,8 @@ def view_scans():
     except Exception as e:
         return f"<pre>Error reading scans.csv: {e}</pre>", 500
 
-# JSON API for last scans (for future shared history on homepage)
-@app.route("/latest-scans")
-def latest_scans():
-    limit = int(request.args.get("limit", "50"))
-    if not os.path.exists(DATA_CSV):
-        return jsonify([])
-    try:
-        df = pd.read_csv(DATA_CSV, dtype=str, on_bad_lines="skip", engine="python")
-        df = df.tail(limit)
-        return df.to_json(orient="records")
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 # ===== Upload DB page (unchanged) =====
+
 INLINE_UPLOAD_DB_HTML = """<!doctype html>
 <html><head><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Upload Model Database (Fallback)</title>
@@ -749,7 +821,8 @@ def upload_db_page():
 @app.route("/upload-db", methods=["POST"])
 def upload_db_post():
     f = request.files.get("file")
-    if not f: return jsonify({"error":"no_file"}), 400
+    if not f:
+        return jsonify({"error":"no_file"}), 400
     name = (f.filename or "").lower()
     if not (name.endswith(".xlsx") or name.endswith(".csv")):
         return jsonify({"error":"unsupported_file_type"}), 400
@@ -768,12 +841,14 @@ def upload_db_post():
         if "manufacturer" not in df.columns:
             df["manufacturer"] = ""
         for c in ["cpu","ram","alt_names"]:
-            if c not in df.columns: df[c] = ""
+            if c not in df.columns:
+                df[c] = ""
 
         latest_by_model = {}
         for _, row in df.iterrows():
             mdl = str(row.get("model_no") or "").strip()
-            if not mdl: continue
+            if not mdl:
+                continue
             key = _norm(mdl)
             latest_by_model[key] = {
                 "manufacturer": str(row.get("manufacturer") or "").strip(),
